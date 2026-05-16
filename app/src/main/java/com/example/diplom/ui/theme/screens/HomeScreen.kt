@@ -1,0 +1,479 @@
+package com.example.diplom.ui.theme.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.LocationOn
+import androidx.compose.material.icons.outlined.PlayArrow
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
+import com.example.diplom.network.PointsRepository
+import com.example.diplom.network.RegionsRepository
+import com.example.diplom.network.StoriesRepository
+import com.example.diplom.utils.buildImageUrl
+
+@Composable
+fun HomeScreen(
+    onOpenDistrict: (String) -> Unit = {},
+    onOpenDistrictsList: () -> Unit = {},
+    onOpenMap: () -> Unit = {},
+    onOpenStories: () -> Unit = {},
+    onOpenPlace: (String) -> Unit = {},
+    onPlayAudio: (String) -> Unit = {},
+    onOpenProfile: () -> Unit = {}
+) {
+    val context = LocalContext.current
+    val regionsRepository = remember { RegionsRepository(context) }
+    val pointsRepository = remember { PointsRepository(context) }
+    val storiesRepository = remember { StoriesRepository(context) }
+
+    var districts by remember { mutableStateOf<List<DistrictUi>>(emptyList()) }
+    var stories by remember { mutableStateOf<List<StoryUi>>(emptyList()) }
+    var places by remember { mutableStateOf<List<PlaceUi>>(emptyList()) }
+
+    var isDistrictsLoading by remember { mutableStateOf(true) }
+    var isStoriesLoading by remember { mutableStateOf(true) }
+    var isPlacesLoading by remember { mutableStateOf(true) }
+
+    LaunchedEffect(Unit) {
+        val regionsResult = regionsRepository.getRegions()
+        districts = regionsResult.getOrDefault(emptyList())
+            .take(5)
+            .map {
+                DistrictUi(
+                    id = it.id.toString(),
+                    title = it.name,
+                    imageUrl = buildImageUrl(it.image)
+                )
+            }
+        isDistrictsLoading = false
+
+        val storiesResult = storiesRepository.getStories()
+        stories = storiesResult.getOrDefault(emptyList())
+            .take(5)
+            .map {
+                StoryUi(
+                    id = it.id.toString(),
+                    title = it.title,
+                    subtitle = it.description ?: "",
+                    imageUrl = buildImageUrl(it.image)
+                )
+            }
+        isStoriesLoading = false
+
+        val pointsResult = pointsRepository.getPoints()
+        places = pointsResult.getOrDefault(emptyList())
+            .take(6)
+            .map {
+                PlaceUi(
+                    id = it.id.toString(),
+                    title = it.name,
+                    description = it.category_name ?: "Описание отсутствует",
+                    locationLabel = buildString {
+                        append(it.region_name ?: "Локация")
+                        if (it.has_audio == true) append(" • Аудиогид")
+                    },
+                    imageUrl = buildImageUrl(it.cover_photo)
+                )
+            }
+        isPlacesLoading = false
+    }
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.White),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        item {
+            HomeTopBar(
+                onOpenProfile = onOpenProfile
+            )
+        }
+
+        item {
+            SectionHeader(
+                title = "Районы Якутии",
+                onClick = onOpenDistrictsList
+            )
+        }
+
+        item {
+            if (isDistrictsLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(15.dp)
+                ) {
+                    items(districts) { district ->
+                        DistrictItem(
+                            item = district,
+                            onClick = { onOpenDistrict(district.id) }
+                        )
+                    }
+                }
+            }
+        }
+
+        item {
+            SectionHeader(
+                title = "Рядом со мной",
+                onClick = onOpenMap
+            )
+        }
+
+        item {
+            NearbyMapPreview(
+                onClick = onOpenMap
+            )
+        }
+
+        item {
+            SectionHeader(
+                title = "История на фотографиях",
+                onClick = onOpenStories
+            )
+        }
+
+        item {
+            if (isStoriesLoading) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(180.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            } else {
+                Column {
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        items(stories) { story ->
+                            Box(
+                                modifier = Modifier.clickable { onOpenStories() }
+                            ) {
+                                StoryItem(item = story)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+            }
+        }
+
+        item {
+            SectionHeader(
+                title = "Интересные места",
+                onClick = {}
+            )
+        }
+
+        if (isPlacesLoading) {
+            item {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(120.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
+        } else {
+            items(places) { place ->
+                PlaceItem(
+                    item = place,
+                    onClick = { onOpenPlace(place.id) },
+                    onPlayClick = { onPlayAudio(place.id) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun HomeTopBar(onOpenProfile: () -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(112.dp),
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Start,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onOpenProfile) {
+                Icon(
+                    imageVector = Icons.Outlined.AccountCircle,
+                    contentDescription = "Профиль",
+                    modifier = Modifier.size(24.dp),
+                    tint = Color(0xFF1F1F1F)
+                )
+            }
+        }
+
+        Text(
+            text = "Город Якутск",
+            style = TextStyle(
+                fontSize = 28.sp,
+                lineHeight = 36.sp
+            ),
+            color = Color(0xFF1F1F1F)
+        )
+    }
+}
+
+@Composable
+fun SectionHeader(
+    title: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = TextStyle(
+                fontSize = 22.sp,
+                lineHeight = 28.sp
+            ),
+            color = Color(0xFF1F1F1F)
+        )
+
+        Text(
+            text = "→",
+            modifier = Modifier.clickable { onClick() },
+            style = TextStyle(fontSize = 24.sp),
+            color = Color(0xFF1F1F1F)
+        )
+    }
+}
+
+@Composable
+fun DistrictItem(
+    item: DistrictUi,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .width(96.dp)
+            .clickable { onClick() },
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (!item.imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = item.imageUrl,
+                contentDescription = item.title,
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(96.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFFE7E3EB))
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = item.title,
+            style = TextStyle(fontSize = 14.sp),
+            color = Color(0xFF1F1F1F),
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+            maxLines = 2
+        )
+    }
+}
+
+@Composable
+fun StoryItem(
+    item: StoryUi
+) {
+    Column(
+        modifier = Modifier.width(132.dp)
+    ) {
+        if (!item.imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = item.imageUrl,
+                contentDescription = item.title,
+                modifier = Modifier
+                    .size(width = 132.dp, height = 179.dp)
+                    .clip(RoundedCornerShape(12.dp)),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(width = 132.dp, height = 179.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFFE7E3EB))
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = item.title,
+            style = TextStyle(fontSize = 14.sp),
+            color = Color(0xFF1F1F1F),
+            maxLines = 2
+        )
+    }
+}
+
+@Composable
+fun PlaceItem(
+    item: PlaceUi,
+    onClick: () -> Unit,
+    onPlayClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(120.dp)
+            .clickable { onClick() },
+        verticalAlignment = Alignment.Top
+    ) {
+        if (!item.imageUrl.isNullOrBlank()) {
+            AsyncImage(
+                model = item.imageUrl,
+                contentDescription = item.title,
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(RoundedCornerShape(16.dp)),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(0xFFE7E3EB))
+            )
+        }
+
+        Spacer(modifier = Modifier.width(12.dp))
+
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(top = 2.dp)
+        ) {
+            Text(
+                text = item.title,
+                style = TextStyle(
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    letterSpacing = 0.1.sp
+                ),
+                color = Color(0xFF1F1F1F)
+            )
+
+            Spacer(modifier = Modifier.height(2.dp))
+
+            Text(
+                text = item.description,
+                style = TextStyle(
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    letterSpacing = 0.25.sp
+                ),
+                color = Color(0xFF49454F),
+                modifier = Modifier.widthIn(max = 210.dp)
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Outlined.LocationOn,
+                    contentDescription = "Локация",
+                    modifier = Modifier.size(18.dp),
+                    tint = Color(0xFF1F1F1F)
+                )
+
+                Spacer(modifier = Modifier.width(4.dp))
+
+                Text(
+                    text = item.locationLabel,
+                    style = TextStyle(fontSize = 12.sp),
+                    color = Color(0xFF49454F)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        IconButton(
+            onClick = onPlayClick,
+            modifier = Modifier.size(24.dp)
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.PlayArrow,
+                contentDescription = "Воспроизвести",
+                tint = Color(0xFF1F1F1F)
+            )
+        }
+    }
+}
