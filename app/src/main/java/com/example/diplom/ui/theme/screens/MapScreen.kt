@@ -40,6 +40,15 @@ import com.yandex.mapkit.map.IconStyle
 import com.yandex.mapkit.map.MapObjectTapListener
 import com.yandex.mapkit.mapview.MapView
 import com.yandex.runtime.image.ImageProvider
+import com.yandex.mapkit.directions.DirectionsFactory
+import com.yandex.mapkit.directions.driving.DrivingOptions
+import com.yandex.mapkit.directions.driving.DrivingRoute
+import com.yandex.mapkit.directions.driving.DrivingRouter
+import com.yandex.mapkit.directions.driving.VehicleOptions
+import com.yandex.mapkit.directions.driving.DrivingSession
+import com.yandex.mapkit.RequestPoint
+import com.yandex.mapkit.RequestPointType
+import com.yandex.mapkit.directions.driving.DrivingRouterType
 
 data class MapPlaceUi(
     val id: String,
@@ -56,13 +65,73 @@ fun MapScreen(
 ) {
     val context = LocalContext.current
     val repository = remember { PointsRepository(context) }
+    val drivingRouter = remember {
+        DirectionsFactory.getInstance().createDrivingRouter(
+            DrivingRouterType.COMBINED
+        )
+    }
 
+    var drivingSession by remember {
+        mutableStateOf<DrivingSession?>(null)
+    }
     var places by remember { mutableStateOf<List<MapPlaceUi>>(emptyList()) }
     var selectedPlace by remember { mutableStateOf<MapPlaceUi?>(null) }
+    var searchText by remember {
+        mutableStateOf("")
+    }
+    var routePlaces by remember {
+        mutableStateOf<List<MapPlaceUi>>(emptyList())
+    }
     var isLoading by remember { mutableStateOf(true) }
     var errorText by remember { mutableStateOf<String?>(null) }
     var userLocation by remember { mutableStateOf<Location?>(null) }
     var locationError by remember { mutableStateOf<String?>(null) }
+    var routeBuilt by remember {
+        mutableStateOf(false)
+    }
+    var routeDistance by remember {
+        mutableStateOf("")
+    }
+
+    var routeTime by remember {
+        mutableStateOf("")
+    }
+    var routePolyline by remember {
+        mutableStateOf<com.yandex.mapkit.map.PolylineMapObject?>(null)
+    }
+    var tourStarted by remember {
+        mutableStateOf(false)
+    }
+
+    var currentPointIndex by remember {
+        mutableStateOf(0)
+    }
+
+
+    val placemarks = remember {
+        mutableStateListOf<com.yandex.mapkit.map.PlacemarkMapObject>()
+    }
+
+    val filteredPlaces = remember(
+        places,
+        searchText
+    ) {
+
+        if (searchText.isBlank()) {
+
+            places
+
+        } else {
+
+            places.filter {
+
+                it.title.contains(
+                    searchText,
+                    ignoreCase = true
+                )
+            }
+        }
+    }
 
     val mapView = remember {
         MapView(context).apply {
@@ -108,6 +177,7 @@ fun MapScreen(
     }
 
     LaunchedEffect(Unit) {
+        userLocation = getLastKnownLocation(context)
         val result = repository.getPoints()
 
         result.onSuccess { list ->
@@ -181,31 +251,42 @@ fun MapScreen(
 
         Spacer(Modifier.height(12.dp))
 
-        Row(
+        OutlinedTextField(
+
+            value = searchText,
+
+            onValueChange = {
+
+                searchText = it
+
+            },
+
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .padding(horizontal = 16.dp)
-                .border(
-                    width = 1.dp,
-                    color = Color(0xFFD9D9D9),
-                    shape = RoundedCornerShape(12.dp)
-                )
                 .padding(horizontal = 16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(
-                text = "Поиск места, города",
-                color = Color(0xFF666666),
-                fontSize = 16.sp,
-                modifier = Modifier.weight(1f)
-            )
-            Icon(
-                imageVector = Icons.Outlined.Search,
-                contentDescription = "Поиск",
-                tint = Color(0xFF444444)
-            )
-        }
+
+            placeholder = {
+
+                Text(
+                    "Поиск места, города"
+                )
+
+            },
+
+            trailingIcon = {
+
+                Icon(
+                    Icons.Outlined.Search,
+                    contentDescription = null
+                )
+
+            },
+
+            shape =
+                RoundedCornerShape(12.dp),
+
+            singleLine = true
+        )
 
         Spacer(Modifier.height(12.dp))
 
@@ -237,59 +318,371 @@ fun MapScreen(
                 else -> {
                     AndroidView(
                         modifier = Modifier.fillMaxSize(),
-                        factory = { mapView },
+
+                        factory = {
+                            mapView
+                        },
+
                         update = { view ->
-                            val map = view.mapWindow.map
-                            map.isNightModeEnabled = true
-                            map.mapObjects.clear()
 
-                            val markerImage = ImageProvider.fromBitmap(markerBitmap)
+                            view.mapWindow.map
+                                .isNightModeEnabled = true
+                        }
+                    )
 
-                            places.forEach { place ->
-                                val placemark = map.mapObjects.addPlacemark().apply {
-                                    geometry = place.point
-                                    setIcon(
-                                        markerImage,
-                                        IconStyle().apply {
-                                            anchor = PointF(0.5f, 1.0f)
-                                            scale = 1.0f
-                                        }
+                    LaunchedEffect(
+                        filteredPlaces,
+                        userLocation,
+                        routePolyline
+                    ) {
+
+                        val map =
+                            mapView.mapWindow.map
+
+                        if (!map.mapObjects.isValid)
+                            return@LaunchedEffect
+
+                        placemarks.forEach { placemark ->
+
+                            try {
+
+                                if (placemark.isValid) {
+
+                                    map.mapObjects.remove(
+                                        placemark
                                     )
                                 }
 
-                                val tapListener = MapObjectTapListener { _, _ ->
+                            } catch (_: Exception) {
+
+                            }
+                        }
+
+                        placemarks.clear()
+
+                        // удаляем только маршрут
+                        routePolyline?.let {
+
+                            if (!it.isValid)
+                                routePolyline = null
+                        }
+
+                        val markerImage =
+                            ImageProvider.fromBitmap(
+                                markerBitmap
+                            )
+
+                        // не clear()
+
+                        filteredPlaces.forEachIndexed { index, place ->
+
+                            val placemark =
+                                map.mapObjects.addPlacemark()
+
+                            placemark.zIndex = 100f
+
+                            placemarks.add(placemark)
+
+                            placemark.geometry =
+                                place.point
+
+                            val routeIndex =
+                                routePlaces.indexOfFirst {
+                                    it.id == place.id
+                                }
+
+                            val icon =
+
+                                if (routeIndex != -1) {
+
+                                    ImageProvider.fromBitmap(
+                                        createRouteNumberBitmap(
+                                            routeIndex + 1
+                                        )
+                                    )
+
+                                } else {
+
+                                    markerImage
+                                }
+
+                            placemark.setIcon(
+
+                                icon,
+
+                                IconStyle().apply {
+
+                                    anchor =
+                                        PointF(0.5f,1f)
+
+                                    scale = 1f
+                                }
+                            )
+
+                            placemark.addTapListener(
+
+                                MapObjectTapListener { _, _ ->
+
                                     selectedPlace = place
+
                                     map.move(
+
                                         CameraPosition(
                                             place.point,
                                             15.5f,
-                                            0.0f,
-                                            0.0f
+                                            0f,
+                                            0f
                                         )
                                     )
+
                                     true
                                 }
-
-                                placemark.addTapListener(tapListener)
-                            }
-
-                            userLocation?.let { location ->
-                                val userPoint = Point(location.latitude, location.longitude)
-                                val userMarker = ImageProvider.fromBitmap(userMarkerBitmap)
-
-                                map.mapObjects.addPlacemark().apply {
-                                    geometry = userPoint
-                                    setIcon(
-                                        userMarker,
-                                        IconStyle().apply {
-                                            anchor = PointF(0.5f, 0.5f)
-                                            scale = 1.0f
-                                        }
-                                    )
-                                }
-                            }
+                            )
                         }
-                    )
+
+                        userLocation?.let { location ->
+
+                            val userMarker =
+                                ImageProvider.fromBitmap(
+                                    userMarkerBitmap
+                                )
+
+                            map.mapObjects
+                                .addPlacemark()
+                                .apply {
+
+                                    geometry =
+                                        Point(
+                                            location.latitude,
+                                            location.longitude
+                                        )
+
+                                    setIcon(userMarker)
+                                }
+                        }
+                    }
+                    if (routePlaces.isNotEmpty()) {
+
+                        Card(
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(16.dp)
+                        ) {
+
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                horizontalAlignment =
+                                    Alignment.CenterHorizontally
+                            ) {
+
+                                Text(
+
+                                    text = if (routeBuilt)
+                                        "Маршрут построен"
+                                    else
+                                        "Маршрут: ${routePlaces.size} объект(ов)"
+
+                                )
+                                Spacer(
+                                    Modifier.height(6.dp)
+                                )
+
+                                Text(
+                                    text =
+                                        "${routePlaces.size} объекта • " +
+                                                routeDistance + " • " +
+                                                routeTime,
+
+                                    color = Color.Gray,
+                                    fontSize = 13.sp
+                                )
+
+                                Spacer(
+                                    Modifier.height(8.dp)
+                                )
+
+                                if (!routeBuilt) {
+
+                                    Button(
+
+                                        onClick = {
+
+                                            userLocation?.let { location ->
+
+                                                buildMultiRoute(
+                                                    mapView = mapView,
+                                                    router = drivingRouter,
+                                                    userLocation = location,
+                                                    places = routePlaces,
+
+                                                    onInfoLoaded = { distance, time ->
+
+                                                        routeDistance = distance
+                                                        routeTime = time
+                                                    },
+
+                                                    routePolyline = routePolyline,
+
+                                                    onPolylineChanged = {
+
+                                                        routePolyline = it
+                                                    }
+                                                )
+
+                                                routeBuilt = true
+                                            }
+                                        }
+
+                                    ) {
+
+                                        Text("Построить")
+                                    }
+                                }
+                                if (routeBuilt && !tourStarted) {
+
+                                    Spacer(
+                                        Modifier.height(8.dp)
+                                    )
+
+                                    Button(
+
+                                        onClick = {
+
+                                            tourStarted = true
+                                            currentPointIndex = 0
+
+                                        }
+
+                                    ) {
+
+                                        Text("Начать экскурсию")
+                                    }
+                                }
+
+                                if (
+                                    tourStarted &&
+                                    routePlaces.isNotEmpty()
+                                ) {
+
+                                    Spacer(
+                                        Modifier.height(8.dp)
+                                    )
+
+                                    Text(
+
+                                        text =
+                                            "Следующая точка:",
+
+                                        fontSize = 13.sp,
+
+                                        color = Color.Gray
+                                    )
+
+                                    Text(
+
+                                        text =
+                                            routePlaces[currentPointIndex]
+                                                .title,
+
+                                        fontSize = 16.sp
+                                    )
+                                    Spacer(
+                                        Modifier.height(8.dp)
+                                    )
+
+                                    if (
+                                        currentPointIndex <
+                                        routePlaces.lastIndex
+                                    ) {
+
+                                        Button(
+
+                                            onClick = {
+
+                                                currentPointIndex++
+
+                                                val nextPoint =
+
+                                                    routePlaces[
+                                                        currentPointIndex
+                                                    ]
+
+                                                mapView.mapWindow.map.move(
+
+                                                    CameraPosition(
+                                                        nextPoint.point,
+                                                        15f,
+                                                        0f,
+                                                        0f
+                                                    )
+                                                )
+                                            }
+
+                                        ) {
+
+                                            Text("Следующая")
+                                        }
+
+                                    } else {
+
+                                        Text(
+
+                                            text =
+                                                "Экскурсия завершена 🎉",
+
+                                            color =
+                                                Color(0xFF4CAF50)
+                                        )
+                                    }
+                                }
+
+                                TextButton(
+
+                                    onClick = {
+
+                                        routePlaces = emptyList()
+
+                                        selectedPlace = null
+
+                                        routeBuilt = false
+
+                                        tourStarted = false
+                                        currentPointIndex = 0
+
+                                        routeDistance = ""
+                                        routeTime = ""
+
+                                        routePolyline?.let { polyline ->
+
+                                            if (polyline.isValid) {
+
+                                                mapView
+                                                    .mapWindow
+                                                    .map
+                                                    .mapObjects
+                                                    .remove(polyline)
+                                            }
+                                        }
+
+                                        routePolyline = null
+
+                                        // заставляем карту обновить объекты
+                                        mapView.mapWindow.map.move(
+                                            mapView.mapWindow.map.cameraPosition
+                                        )
+                                    }
+
+                                ) {
+
+                                    Text("Завершить маршрут")
+
+                                }
+
+                            }
+
+                        }
+
+                    }
 
                     FloatingActionButton(
                         onClick = {
@@ -356,25 +749,68 @@ fun MapScreen(
 
                                 Spacer(Modifier.height(12.dp))
 
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                Column(
+                                    verticalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
-                                    OutlinedButton(
-                                        onClick = { selectedPlace = null },
-                                        shape = RoundedCornerShape(12.dp)
-                                    ) {
-                                        Text("Закрыть")
-                                    }
 
                                     Button(
-                                        onClick = { onOpenPlace(place.id) },
+                                        onClick = {
+
+                                            if (
+                                                routePlaces.none {
+                                                    it.id == place.id
+                                                }
+                                            ) {
+
+                                                routePlaces =
+                                                    routePlaces + place
+
+                                                selectedPlace = null
+                                            }
+
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
                                         shape = RoundedCornerShape(12.dp),
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = Color(0xFFFFD382),
-                                            contentColor = Color(0xFF1F1F1F)
+                                            containerColor = Color(0xFF4CAF50),
+                                            contentColor = Color.White
                                         )
                                     ) {
-                                        Text("Перейти")
+                                        Text("Добавить в маршрут")
+                                    }
+
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement =
+                                            Arrangement.spacedBy(8.dp)
+                                    ) {
+
+                                        OutlinedButton(
+                                            onClick = {
+                                                selectedPlace = null
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(12.dp)
+                                        ) {
+                                            Text("Закрыть")
+                                        }
+
+                                        Button(
+                                            onClick = {
+                                                onOpenPlace(place.id)
+                                            },
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(12.dp),
+                                            colors =
+                                                ButtonDefaults.buttonColors(
+                                                    containerColor =
+                                                        Color(0xFFFFD382),
+                                                    contentColor =
+                                                        Color(0xFF1F1F1F)
+                                                )
+                                        ) {
+                                            Text("Перейти")
+                                        }
                                     }
                                 }
                             }
@@ -412,36 +848,300 @@ fun MapScreen(
         }
     }
 }
+private fun getLastKnownLocation(
+    context: Context
+): Location? {
 
-private fun getLastKnownLocation(context: Context): Location? {
-    val manager = context.getSystemService(Context.LOCATION_SERVICE) as LocationManager
+    val manager =
+        context.getSystemService(
+            Context.LOCATION_SERVICE
+        ) as LocationManager
 
-    val fineGranted = ContextCompat.checkSelfPermission(
-        context,
-        Manifest.permission.ACCESS_FINE_LOCATION
-    ) == PackageManager.PERMISSION_GRANTED
+    val fineGranted =
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
 
-    val coarseGranted = ContextCompat.checkSelfPermission(
-        context,
-        Manifest.permission.ACCESS_COARSE_LOCATION
-    ) == PackageManager.PERMISSION_GRANTED
+    val coarseGranted =
+        ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
 
-    if (!fineGranted && !coarseGranted) return null
+    if (!fineGranted && !coarseGranted)
+        return null
 
-    val gpsLocation = runCatching {
-        manager.getLastKnownLocation(LocationManager.GPS_PROVIDER)
-    }.getOrNull()
+    try {
 
-    val networkLocation = runCatching {
-        manager.getLastKnownLocation(LocationManager.NETWORK_PROVIDER)
-    }.getOrNull()
+        val providers =
+            manager.getProviders(true)
 
-    return when {
-        gpsLocation != null && networkLocation != null ->
-            if (gpsLocation.time >= networkLocation.time) gpsLocation else networkLocation
-        gpsLocation != null -> gpsLocation
-        else -> networkLocation
+        for (provider in providers) {
+
+            val location =
+                manager.getLastKnownLocation(provider)
+
+            if (location != null)
+                return location
+        }
+
+    } catch (_: Exception) { }
+
+    // координаты Якутска для эмулятора
+    return Location("mock").apply {
+        latitude = 62.0281
+        longitude = 129.7326
     }
+}
+
+private fun buildRoute(
+    mapView: MapView,
+    router: DrivingRouter,
+    userLocation: Location,
+    destination: Point
+) {
+
+    val startPoint = Point(
+        userLocation.latitude,
+        userLocation.longitude
+    )
+
+    val points = listOf(
+
+        RequestPoint(
+            startPoint,
+            RequestPointType.WAYPOINT,
+            null,
+            null,
+            null
+        ),
+
+        RequestPoint(
+            destination,
+            RequestPointType.WAYPOINT,
+            null,
+            null,
+            null
+        )
+    )
+
+    router.requestRoutes(
+        points,
+        DrivingOptions(),
+        VehicleOptions(),
+
+        object : DrivingSession.DrivingRouteListener {
+
+            override fun onDrivingRoutes(
+                routes: MutableList<DrivingRoute>
+            ) {
+
+                if (routes.isNotEmpty()) {
+
+                    mapView.mapWindow.map.mapObjects
+                        .addPolyline(routes[0].geometry)
+                }
+                val points = routes[0].geometry.points
+
+                if (points.isNotEmpty()) {
+
+                    var minLat = points.first().latitude
+                    var maxLat = points.first().latitude
+
+                    var minLon = points.first().longitude
+                    var maxLon = points.first().longitude
+
+                    points.forEach {
+
+                        minLat = minOf(
+                            minLat,
+                            it.latitude
+                        )
+
+                        maxLat = maxOf(
+                            maxLat,
+                            it.latitude
+                        )
+
+                        minLon = minOf(
+                            minLon,
+                            it.longitude
+                        )
+
+                        maxLon = maxOf(
+                            maxLon,
+                            it.longitude
+                        )
+                    }
+
+                    val center = Point(
+
+                        (minLat + maxLat) / 2,
+                        (minLon + maxLon) / 2
+
+                    )
+
+                    mapView.mapWindow.map.move(
+
+                        CameraPosition(
+                            center,
+                            11f,
+                            0f,
+                            0f
+                        )
+                    )
+                }
+            }
+
+            override fun onDrivingRoutesError(
+                error: com.yandex.runtime.Error
+            ) {
+
+            }
+        }
+    )
+}
+
+private fun buildMultiRoute(
+    mapView: MapView,
+    router: DrivingRouter,
+    userLocation: Location,
+    places: List<MapPlaceUi>,
+    onInfoLoaded: (
+        String,
+        String
+    ) -> Unit,
+    routePolyline: com.yandex.mapkit.map.PolylineMapObject?,
+    onPolylineChanged: (com.yandex.mapkit.map.PolylineMapObject?) -> Unit
+) {
+
+    val startPoint = Point(
+        userLocation.latitude,
+        userLocation.longitude
+    )
+
+    val points =
+        mutableListOf<RequestPoint>()
+
+    points.add(
+        RequestPoint(
+            startPoint,
+            RequestPointType.WAYPOINT,
+            null,
+            null,
+            null
+        )
+    )
+
+    places.forEach { place ->
+
+        points.add(
+            RequestPoint(
+                place.point,
+                RequestPointType.WAYPOINT,
+                null,
+                null,
+                null
+            )
+        )
+    }
+
+
+    router.requestRoutes(
+
+        points,
+
+        DrivingOptions(),
+
+        VehicleOptions(),
+
+        object :
+            DrivingSession.DrivingRouteListener {
+
+            override fun onDrivingRoutes(
+                routes: MutableList<DrivingRoute>
+            ) {
+
+                if (routes.isEmpty()) return
+                val route = routes[0]
+
+                val distanceKm =
+                    route.metadata.weight.distance.value / 1000
+
+                val timeMinutes =
+                    route.metadata.weight.time.value / 60
+
+                onInfoLoaded(
+
+                    String.format(
+                        "%.1f км",
+                        distanceKm
+                    ),
+
+                    "~${timeMinutes.toInt()} мин"
+                )
+
+                val mapObjects =
+                    mapView.mapWindow.map.mapObjects
+
+                routePolyline?.let {
+                    mapObjects.remove(it)
+                }
+
+                val polyline =
+                    mapObjects.addPolyline(
+                        routes[0].geometry
+                    )
+
+                @Suppress("DEPRECATION")
+                polyline.strokeWidth = 3f
+
+                polyline.outlineWidth = 1f
+                polyline.zIndex = -1f
+
+                onPolylineChanged(polyline)
+
+                val userMarker =
+                    ImageProvider.fromBitmap(
+                        createUserMarkerBitmap()
+                    )
+
+                mapObjects.addPlacemark().apply {
+
+                    geometry = Point(
+                        userLocation.latitude,
+                        userLocation.longitude
+                    )
+
+                    setIcon(
+                        userMarker,
+                        IconStyle().apply {
+                            anchor = PointF(0.5f,0.5f)
+                        }
+                    )
+                }
+
+//                    mapView.mapWindow.map.move(
+//                    CameraPosition(
+//                        Point(
+//                            userLocation.latitude,
+//                            userLocation.longitude
+//                        ),
+//                        14f,
+//                        0f,
+//                        0f
+//                    )
+//                )
+            }
+
+            override fun onDrivingRoutesError(
+                error: com.yandex.runtime.Error
+            ) {
+
+            }
+        }
+    )
 }
 
 private fun createMarkerBitmap(): Bitmap {
@@ -491,6 +1191,60 @@ private fun createUserMarkerBitmap(): Bitmap {
 
     canvas.drawCircle(width / 2f, height / 2f, 24f, outerPaint)
     canvas.drawCircle(width / 2f, height / 2f, 16f, innerPaint)
+
+    return bitmap
+}
+
+private fun createRouteNumberBitmap(
+    number: Int
+): Bitmap {
+
+    val size = 100
+
+    val bitmap =
+        Bitmap.createBitmap(
+            size,
+            size,
+            Bitmap.Config.ARGB_8888
+        )
+
+    val canvas =
+        Canvas(bitmap)
+
+    val circlePaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+
+            color =
+                AndroidColor.parseColor("#4CAF50")
+        }
+
+    canvas.drawCircle(
+        size/2f,
+        size/2f,
+        42f,
+        circlePaint
+    )
+
+    val textPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+
+            color =
+                AndroidColor.WHITE
+
+            textSize = 42f
+
+            textAlign =
+                Paint.Align.CENTER
+
+            isFakeBoldText = true
+        }
+
+    canvas.drawText(
+        number.toString(),
+        size/2f,
+        size/2f + 14,
+        textPaint
+    )
 
     return bitmap
 }

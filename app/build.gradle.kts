@@ -82,7 +82,7 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     implementation("androidx.compose.material:material-icons-extended")
 
-    implementation("com.yandex.android:maps.mobile:4.32.1-lite")
+    implementation("com.yandex.android:maps.mobile:4.32.1-full")
 
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
