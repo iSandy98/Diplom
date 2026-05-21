@@ -25,6 +25,10 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.diplom.network.RegionDto
 import com.example.diplom.network.RegionsRepository
+import androidx.compose.material.icons.outlined.Delete
+import com.example.diplom.network.PointsRepository
+import com.example.diplom.network.OfflineRepository
+import kotlinx.coroutines.launch
 
 private const val API_DOMAIN = "http://10.0.2.2:8000"
 
@@ -35,10 +39,31 @@ fun DistrictsScreen(
 ) {
     val context = LocalContext.current
     val repository = remember { RegionsRepository(context) }
-
+    val pointsRepository = remember {
+        PointsRepository(context)
+    }
+    val offlineRepository = remember {
+        OfflineRepository(context)
+    }
+    val scope = rememberCoroutineScope()
     var query by remember { mutableStateOf("") }
     var regions by remember { mutableStateOf<List<RegionDto>>(emptyList()) }
-    var downloadedIds by remember { mutableStateOf(setOf<Int>()) }
+    var downloadedIds by remember {
+
+        mutableStateOf(
+            setOf<Int>()
+        )
+    }
+
+    var downloadingRegionId by remember {
+
+        mutableStateOf<Int?>(null)
+    }
+
+    var downloadProgress by remember {
+
+        mutableFloatStateOf(0f)
+    }
     var isLoading by remember { mutableStateOf(true) }
     var errorText by remember { mutableStateOf<String?>(null) }
 
@@ -58,6 +83,34 @@ fun DistrictsScreen(
         } else {
             regions.filter { it.name.contains(query, ignoreCase = true) }
         }
+    }
+
+    LaunchedEffect(
+        downloadingRegionId
+    ){
+
+        if(
+            downloadingRegionId==null
+        ) return@LaunchedEffect
+
+        for(
+        i in 1..100
+        ){
+
+            kotlinx.coroutines.delay(
+                60
+            )
+
+            downloadProgress =
+                i/100f
+        }
+
+        downloadedIds =
+            downloadedIds +
+                    downloadingRegionId!!
+
+        downloadingRegionId =
+            null
     }
 
     Column(
@@ -152,14 +205,78 @@ fun DistrictsScreen(
                 ) {
                     items(filteredRegions) { region ->
                         DistrictRowFromApi(
+
                             region = region,
-                            isDownloaded = downloadedIds.contains(region.id),
-                            onOpen = { onOpenDistrict(region.id.toString()) },
+
+                            isDownloaded =
+                                downloadedIds.contains(
+                                    region.id
+                                ),
+
+                            isDownloading =
+                                downloadingRegionId ==
+                                        region.id,
+
+                            progress =
+                                downloadProgress,
+
+                            onOpen = {
+
+                                onOpenDistrict(
+                                    region.id.toString()
+                                )
+                            },
+
                             onToggleDownload = {
-                                downloadedIds = if (downloadedIds.contains(region.id)) {
-                                    downloadedIds - region.id
-                                } else {
-                                    downloadedIds + region.id
+
+                                if(
+                                    downloadingRegionId != null
+                                ) return@DistrictRowFromApi
+
+                                downloadingRegionId =
+                                    region.id
+
+                                downloadProgress = 0f
+
+                                scope.launch {
+
+                                    val pointsResult =
+                                        pointsRepository
+                                            .getPoints()
+
+                                    val districtPlaces =
+                                        pointsResult
+                                            .getOrDefault(
+                                                emptyList()
+                                            )
+                                            .filter {
+
+                                                it.region_name ==
+                                                        region.name
+                                            }
+
+                                    offlineRepository
+                                        .saveRegionPlaces(
+
+                                            region.name,
+
+                                            districtPlaces
+                                        )
+                                }
+                            },
+
+                            onDelete = {
+
+                                downloadedIds =
+                                    downloadedIds -
+                                            region.id
+
+                                scope.launch {
+
+                                    offlineRepository
+                                        .deleteRegion(
+                                            region.name
+                                        )
                                 }
                             }
                         )
@@ -174,8 +291,11 @@ fun DistrictsScreen(
 private fun DistrictRowFromApi(
     region: RegionDto,
     isDownloaded: Boolean,
-    onOpen: () -> Unit,
-    onToggleDownload: () -> Unit
+    isDownloading: Boolean,
+    progress: Float,
+    onOpen:()->Unit,
+    onToggleDownload:()->Unit,
+    onDelete:()->Unit
 ) {
     Column {
         Row(
@@ -228,19 +348,103 @@ private fun DistrictRowFromApi(
                     lineHeight = 18.sp,
                     color = Color(0xFF49454F)
                 )
+
+                if(isDownloaded){
+
+                    Spacer(
+                        Modifier.height(6.dp)
+                    )
+
+                    Row(
+                        verticalAlignment =
+                            Alignment.CenterVertically
+                    ){
+
+                        Text(
+
+                            text =
+                                "✓ Доступно оффлайн • ~34 МБ",
+
+                            color =
+                                Color(0xFF4CAF50),
+
+                            fontSize = 11.sp
+                        )
+
+                        Spacer(
+                            Modifier.width(8.dp)
+                        )
+
+                        Icon(
+
+                            imageVector =
+                                Icons.Outlined.Delete,
+
+                            contentDescription =
+                                "Удалить",
+
+                            tint =
+                                Color.Red,
+
+                            modifier =
+                                Modifier
+                                    .size(16.dp)
+                                    .clickable{
+
+                                        onDelete()
+                                    }
+                        )
+                    }
+                }
+
             }
 
-            IconButton(onClick = onToggleDownload) {
+            if(isDownloading){
+
+                Box(
+                    contentAlignment=
+                        Alignment.Center
+                ){
+
+                    CircularProgressIndicator(
+
+                        progress = {
+                            progress
+                        },
+
+                        modifier=
+                            Modifier.size(
+                                34.dp
+                            )
+                    )
+
+                    Text(
+                        "${(progress*100).toInt()}%",
+                        fontSize=9.sp
+                    )
+
+                }
+
+            }else{
+
+        if(!isDownloaded){
+
+            IconButton(
+                onClick =
+                    onToggleDownload
+            ){
+
                 Icon(
-                    imageVector = if (isDownloaded) {
-                        Icons.Outlined.DownloadDone
-                    } else {
-                        Icons.Outlined.Download
-                    },
-                    contentDescription = "Скачать район",
-                    tint = Color(0xFF49454F)
+
+                    imageVector =
+                        Icons.Outlined.Download,
+
+                    contentDescription =
+                        "Скачать"
                 )
             }
+        }
+    }
         }
 
         HorizontalDivider(

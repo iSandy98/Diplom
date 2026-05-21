@@ -49,6 +49,12 @@ import com.yandex.mapkit.directions.driving.DrivingSession
 import com.yandex.mapkit.RequestPoint
 import com.yandex.mapkit.RequestPointType
 import com.yandex.mapkit.directions.driving.DrivingRouterType
+import androidx.compose.ui.zIndex
+import kotlinx.coroutines.delay
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.common.MediaItem
+import com.example.diplom.network.PointDetailDto
+import androidx.compose.material.icons.filled.Close
 
 data class MapPlaceUi(
     val id: String,
@@ -107,10 +113,43 @@ fun MapScreen(
         mutableStateOf(0)
     }
 
+    var nearbyPlace by remember {
+        mutableStateOf<MapPlaceUi?>(null)
+    }
+
+    var audioPlace by remember {
+        mutableStateOf<MapPlaceUi?>(null)
+    }
+
+    var audioShown by remember {
+        mutableStateOf(setOf<String>())
+    }
+
+    var alreadyTriggered by remember {
+        mutableStateOf(setOf<String>())
+    }
+
+    var userPlacemark by remember {
+        mutableStateOf<com.yandex.mapkit.map.PlacemarkMapObject?>(null)
+    }
+
+    var exoPlayer = remember {
+        ExoPlayer.Builder(context).build()
+    }
+
+    var currentAudioPlace by remember {
+        mutableStateOf<PointDetailDto?>(null)
+    }
+
+    var audioStarted by remember {
+        mutableStateOf(setOf<String>())
+    }
 
     val placemarks = remember {
         mutableStateListOf<com.yandex.mapkit.map.PlacemarkMapObject>()
     }
+
+
 
     val filteredPlaces = remember(
         places,
@@ -173,6 +212,14 @@ fun MapScreen(
         onDispose {
             mapView.onStop()
             MapKitFactory.getInstance().onStop()
+        }
+    }
+
+    DisposableEffect(Unit) {
+
+        onDispose {
+
+            exoPlayer.release()
         }
     }
 
@@ -329,11 +376,322 @@ fun MapScreen(
                                 .isNightModeEnabled = true
                         }
                     )
+                    currentAudioPlace?.let{
+
+                        Surface(
+
+                            modifier =
+                                Modifier
+                                    .align(
+                                        Alignment.BottomCenter
+                                    )
+                                    .fillMaxWidth(),
+
+                            tonalElevation=8.dp
+
+                        ){
+
+                            Row(
+
+                                modifier=
+                                    Modifier
+                                        .padding(14.dp),
+
+                                verticalAlignment=
+                                    Alignment.CenterVertically
+
+                            ){
+
+                                Column(
+                                    Modifier.weight(1f)
+                                ){
+
+                                    Text(
+                                        "🎧 Сейчас играет"
+                                    )
+
+                                    Text(
+                                        it.name
+                                    )
+                                }
+
+                                IconButton(
+
+                                    onClick={
+
+                                        exoPlayer.pause()
+
+                                        currentAudioPlace =
+                                            null
+                                    }
+
+                                ){
+
+                                    Icon(
+                                        Icons.Default.Close,
+                                        null
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    if(
+                        tourStarted &&
+                        routePlaces.isNotEmpty()
+                    ){
+
+                        Card(
+
+                            modifier =
+                                Modifier
+                                    .align(
+                                        Alignment.TopCenter
+                                    )
+                                    .padding(
+                                        top = 16.dp
+                                    ),
+
+                            shape =
+                                RoundedCornerShape(
+                                    20.dp
+                                )
+
+                        ){
+
+                            Row(
+
+                                modifier =
+                                    Modifier.padding(
+                                        14.dp
+                                    ),
+
+                                verticalAlignment =
+                                    Alignment.CenterVertically
+
+                            ){
+
+                                Column{
+
+                                    Text(
+                                        "🎧 Экскурсия идет"
+                                    )
+
+                                    Text(
+
+                                        text =
+                                            "Точка " +
+                                                    "${currentPointIndex+1}" +
+                                                    " из " +
+                                                    routePlaces.size,
+
+                                        fontSize = 12.sp,
+                                        color = Color.Gray
+                                    )
+                                }
+
+                                Spacer(
+                                    Modifier.width(
+                                        16.dp
+                                    )
+                                )
+
+                                OutlinedButton(
+
+                                    onClick = {
+
+                                        tourStarted = false
+                                        currentPointIndex = 0
+
+                                        routePlaces = emptyList()
+                                        routeBuilt = false
+                                        selectedPlace = null
+
+                                        nearbyPlace = null
+                                        alreadyTriggered = emptySet()
+
+                                        routeDistance = ""
+                                        routeTime = ""
+
+                                        routePolyline?.let { polyline ->
+
+                                            if (polyline.isValid) {
+                                                mapView
+                                                    .mapWindow
+                                                    .map
+                                                    .mapObjects
+                                                    .remove(polyline)
+                                            }
+                                        }
+
+                                        routePolyline = null
+                                    }
+
+                                ){
+
+                                    Text("Стоп")
+                                }
+                            }
+                        }
+                    }
+
+                    nearbyPlace?.let { place ->
+
+                        LaunchedEffect(place.id) {
+
+                            kotlinx.coroutines.delay(3500)
+
+                            nearbyPlace = null
+                        }
+
+                        Card(
+
+                            modifier =
+                                Modifier
+                                    .align(
+                                        Alignment.BottomCenter
+                                    )
+                                    .padding(
+                                        bottom = 110.dp
+                                    )
+                                    .padding(
+                                        top = 140.dp,
+                                        start = 16.dp,
+                                        end = 16.dp
+                                    )
+                                    .zIndex(999f),
+
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor =
+                                        Color(0xFF4CAF50)
+                                )
+                        ) {
+
+                            Column(
+
+                                modifier =
+                                    Modifier.padding(16.dp)
+
+                            ) {
+
+                                Text(
+
+                                    text =
+                                        "📍 Вы рядом с объектом",
+
+                                    color =
+                                        Color.White
+                                )
+
+                                Spacer(
+                                    Modifier.height(6.dp)
+                                )
+
+                                Text(
+
+                                    text =
+                                        place.title,
+
+                                    color =
+                                        Color.White
+                                )
+                            }
+                        }
+                    }
+
+                    audioPlace?.let { place ->
+
+                        Card(
+
+                            modifier =
+                                Modifier
+                                    .align(
+                                        Alignment.BottomCenter
+                                    )
+                                    .padding(
+                                        bottom = 110.dp
+                                    )
+                                    .padding(20.dp),
+
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor =
+                                        Color(0xFF1F1F1F)
+                                )
+                        ){
+
+                            Column(
+
+                                modifier =
+                                    Modifier.padding(16.dp),
+
+                                horizontalAlignment =
+                                    Alignment.CenterHorizontally
+                            ){
+
+                                Text(
+                                    "🎧 Аудиогид готов",
+                                    color = Color.White
+                                )
+
+                                Spacer(
+                                    Modifier.height(6.dp)
+                                )
+
+                                Text(
+                                    place.title,
+                                    color = Color.White
+                                )
+
+                                Spacer(
+                                    Modifier.height(10.dp)
+                                )
+
+                                Row(
+
+                                    horizontalArrangement =
+                                        Arrangement.spacedBy(8.dp)
+
+                                ){
+
+                                    OutlinedButton(
+
+                                        onClick = {
+
+                                            audioPlace = null
+                                        }
+
+                                    ){
+
+                                        Text("Позже")
+                                    }
+
+                                    Button(
+
+                                        onClick = {
+
+                                            onOpenPlace(
+                                                place.id
+                                            )
+
+                                            audioPlace = null
+                                        }
+
+                                    ){
+
+                                        Text("Слушать")
+                                    }
+                                }
+                            }
+                        }
+                    }
 
                     LaunchedEffect(
                         filteredPlaces,
                         userLocation,
-                        routePolyline
+                        routePolyline,
+                        routePlaces
                     ) {
 
                         val map =
@@ -420,20 +778,21 @@ fun MapScreen(
                             )
 
                             placemark.addTapListener(
-
                                 MapObjectTapListener { _, _ ->
 
-                                    selectedPlace = place
+                                    if (!tourStarted) {
 
-                                    map.move(
+                                        selectedPlace = place
 
-                                        CameraPosition(
-                                            place.point,
-                                            15.5f,
-                                            0f,
-                                            0f
+                                        map.move(
+                                            CameraPosition(
+                                                place.point,
+                                                15.5f,
+                                                0f,
+                                                0f
+                                            )
                                         )
-                                    )
+                                    }
 
                                     true
                                 }
@@ -442,14 +801,23 @@ fun MapScreen(
 
                         userLocation?.let { location ->
 
+                            userPlacemark?.let {
+
+                                if (it.isValid) {
+
+                                    map.mapObjects.remove(it)
+                                }
+                            }
+
                             val userMarker =
                                 ImageProvider.fromBitmap(
                                     userMarkerBitmap
                                 )
 
-                            map.mapObjects
-                                .addPlacemark()
-                                .apply {
+                            userPlacemark =
+                                map.mapObjects.addPlacemark().apply {
+
+                                    zIndex = 200f
 
                                     geometry =
                                         Point(
@@ -457,11 +825,137 @@ fun MapScreen(
                                             location.longitude
                                         )
 
-                                    setIcon(userMarker)
+                                    setIcon(
+                                        userMarker,
+                                        IconStyle().apply {
+
+                                            anchor =
+                                                PointF(0.5f,0.5f)
+
+                                            scale = 1f
+                                        }
+                                    )
                                 }
                         }
                     }
-                    if (routePlaces.isNotEmpty()) {
+
+                    LaunchedEffect(
+                        userLocation,
+                        currentPointIndex,
+                        tourStarted
+                    ) {
+
+                        if (
+                            !tourStarted ||
+                            userLocation == null ||
+                            routePlaces.isEmpty()
+                        ) return@LaunchedEffect
+
+                        val currentPlace =
+                            routePlaces.getOrNull(currentPointIndex)
+                                ?: return@LaunchedEffect
+
+                        val result = FloatArray(1)
+
+                        android.location.Location.distanceBetween(
+                            userLocation!!.latitude,
+                            userLocation!!.longitude,
+                            currentPlace.point.latitude,
+                            currentPlace.point.longitude,
+                            result
+                        )
+
+                        val distance = result[0]
+
+                        val alreadyNear =
+                            alreadyTriggered.contains(currentPlace.id)
+
+                        if (distance < 50f && !alreadyNear) {
+
+                            nearbyPlace = currentPlace
+
+                            alreadyTriggered =
+                                alreadyTriggered + currentPlace.id
+                        }
+
+                        if (
+                            distance < 20f &&
+                            currentPlace.hasAudio &&
+                            !audioStarted.contains(currentPlace.id)
+                        ) {
+
+                            android.util.Log.d(
+                                "AUDIO_TEST",
+                                "условие выполнено"
+                            )
+
+                            val detailResult =
+                                repository.getPointDetail(
+                                    currentPlace.id.toInt()
+                                )
+
+                            detailResult.onSuccess { detail ->
+
+                                android.util.Log.d(
+                                    "AUDIO_TEST",
+                                    "детали пришли"
+                                )
+
+                                android.util.Log.d(
+                                    "AUDIO_TEST",
+                                    "audio=${detail.audio_guide?.audio_file}"
+                                )
+
+                                val audioUrl =
+                                    buildMediaUrl(
+                                        detail.audio_guide?.audio_file
+                                    )
+
+                                android.util.Log.d(
+                                    "AUDIO_TEST",
+                                    "url=$audioUrl"
+                                )
+
+                                if (!audioUrl.isNullOrBlank()) {
+
+                                    audioPlace =
+                                        currentPlace
+
+                                    exoPlayer.stop()
+
+                                    exoPlayer.clearMediaItems()
+
+                                    exoPlayer.setMediaItem(
+                                        MediaItem.fromUri(audioUrl)
+                                    )
+
+                                    exoPlayer.prepare()
+
+                                    exoPlayer.play()
+
+                                    currentAudioPlace =
+                                        detail
+
+                                    audioStarted =
+                                        audioStarted + currentPlace.id
+                                }
+                            }
+
+                            detailResult.onFailure {
+
+                                android.util.Log.e(
+                                    "AUDIO_TEST",
+                                    "ошибка=${it.message}"
+                                )
+                            }
+                        }
+                    }
+
+                    if(
+                        routePlaces.isNotEmpty()
+                        &&
+                        !tourStarted
+                    ) {
 
                         Card(
                             modifier = Modifier
@@ -578,14 +1072,16 @@ fun MapScreen(
                                         color = Color.Gray
                                     )
 
-                                    Text(
+                                    routePlaces.getOrNull(
+                                        currentPointIndex
+                                    )?.let {
 
-                                        text =
-                                            routePlaces[currentPointIndex]
-                                                .title,
+                                        Text(
+                                            text = it.title,
+                                            fontSize = 16.sp
+                                        )
+                                    }
 
-                                        fontSize = 16.sp
-                                    )
                                     Spacer(
                                         Modifier.height(8.dp)
                                     )
@@ -599,23 +1095,33 @@ fun MapScreen(
 
                                             onClick = {
 
-                                                currentPointIndex++
+                                                if(
+                                                    currentPointIndex <
+                                                    routePlaces.lastIndex
+                                                ){
 
-                                                val nextPoint =
+                                                    currentPointIndex++
 
-                                                    routePlaces[
-                                                        currentPointIndex
-                                                    ]
+                                                    routePlaces
+                                                        .getOrNull(
+                                                            currentPointIndex
+                                                        )
+                                                        ?.let { nextPoint ->
 
-                                                mapView.mapWindow.map.move(
+                                                            mapView
+                                                                .mapWindow
+                                                                .map
+                                                                .move(
 
-                                                    CameraPosition(
-                                                        nextPoint.point,
-                                                        15f,
-                                                        0f,
-                                                        0f
-                                                    )
-                                                )
+                                                                    CameraPosition(
+                                                                        nextPoint.point,
+                                                                        15f,
+                                                                        0f,
+                                                                        0f
+                                                                    )
+                                                                )
+                                                        }
+                                                }
                                             }
 
                                         ) {
@@ -890,8 +1396,8 @@ private fun getLastKnownLocation(
 
     // координаты Якутска для эмулятора
     return Location("mock").apply {
-        latitude = 62.0281
-        longitude = 129.7326
+        latitude = 62.026373
+        longitude = 129.735630
     }
 }
 
@@ -1102,25 +1608,6 @@ private fun buildMultiRoute(
 
                 onPolylineChanged(polyline)
 
-                val userMarker =
-                    ImageProvider.fromBitmap(
-                        createUserMarkerBitmap()
-                    )
-
-                mapObjects.addPlacemark().apply {
-
-                    geometry = Point(
-                        userLocation.latitude,
-                        userLocation.longitude
-                    )
-
-                    setIcon(
-                        userMarker,
-                        IconStyle().apply {
-                            anchor = PointF(0.5f,0.5f)
-                        }
-                    )
-                }
 
 //                    mapView.mapWindow.map.move(
 //                    CameraPosition(
@@ -1247,4 +1734,23 @@ private fun createRouteNumberBitmap(
     )
 
     return bitmap
+}
+
+private fun buildMediaUrl(
+    path: String?
+): String? {
+
+    if (path.isNullOrBlank())
+        return null
+
+    return when {
+        path.startsWith("http") ->
+            path
+
+        path.startsWith("/") ->
+            "http://192.168.0.166:8000$path"
+
+        else ->
+            "http://192.168.0.166:8000/$path"
+    }
 }

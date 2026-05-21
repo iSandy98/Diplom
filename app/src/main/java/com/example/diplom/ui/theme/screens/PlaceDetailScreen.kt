@@ -33,6 +33,11 @@ import kotlinx.coroutines.delay
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.StarBorder
+import com.example.diplom.network.AuthRepository
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 
 private const val API_DOMAIN = "http://10.0.2.2:8000"
 
@@ -43,6 +48,20 @@ fun PlaceDetailScreen(
 ) {
     val context = LocalContext.current
     val repository = remember { PointsRepository(context) }
+    val authRepository = remember {
+        AuthRepository(context)
+    }
+
+    val canReview =
+        !authRepository.isGuest()
+
+    var selectedStars by remember {
+        mutableIntStateOf(0)
+    }
+
+    var reviewText by remember {
+        mutableStateOf("")
+    }
 
     var place by remember { mutableStateOf<PointDetailDto?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -75,7 +94,7 @@ fun PlaceDetailScreen(
                     isPlaying = false
                     currentPosition = 0L
 
-                    exoPlayer.stop()       // 🔥 ВАЖНО
+                    exoPlayer.stop()       //  ВАЖНО
                     exoPlayer.clearMediaItems()
 
                     showPlayer = false
@@ -171,8 +190,13 @@ fun PlaceDetailScreen(
                 }
 
                 Column(
-                    modifier = Modifier
-                        .fillMaxSize()
+
+                    modifier =
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(
+                                rememberScrollState()
+                            )
                         .padding(bottom = if (showPlayer) 140.dp else 0.dp)
                 ) {
                     Spacer(Modifier.height(16.dp))
@@ -211,48 +235,84 @@ fun PlaceDetailScreen(
                             .padding(horizontal = 16.dp)
                     ) {
                         Text(
-                            text = currentPlace.name,
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = Color(0xFF1F1F1F)
-                        )
-
-                        Spacer(Modifier.height(6.dp))
-
-                        Text(
                             text = shortInfo,
                             color = Color(0xFF49454F),
                             fontSize = 14.sp
                         )
 
+                        Spacer(
+                            Modifier.height(8.dp)
+                        )
+
+                        if(currentPlace.audio_guide==null){
+
+                            Text(
+
+                                text =
+                                    "🎧 Аудиогид скоро появится",
+
+                                color =
+                                    Color.Gray,
+
+                                fontSize = 13.sp
+                            )
+                        }
+
                         if (currentPlace.audio_guide != null) {
+
                             Spacer(Modifier.height(16.dp))
 
                             Button(
                                 onClick = {
-                                    val audioUrl = buildMediaUrl(currentPlace.audio_guide?.audio_file)
+                                    val audioUrl =
+                                        buildMediaUrl(
+                                            currentPlace.audio_guide?.audio_file
+                                        )
+
                                     playerError = null
 
                                     if (!audioUrl.isNullOrBlank()) {
+
                                         exoPlayer.stop()
+
                                         exoPlayer.clearMediaItems()
-                                        exoPlayer.setMediaItem(MediaItem.fromUri(audioUrl))
+
+                                        exoPlayer.setMediaItem(
+                                            MediaItem.fromUri(audioUrl)
+                                        )
+
                                         exoPlayer.prepare()
+
                                         exoPlayer.playWhenReady = true
+
                                         currentPosition = 0L
                                         duration = 0L
                                         showPlayer = true
+
                                     } else {
-                                        playerError = "Ссылка на аудио не найдена"
+
+                                        playerError =
+                                            "Ссылка на аудио не найдена"
                                     }
                                 },
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = Color(0xFFE49A68)
-                                ),
-                                shape = RoundedCornerShape(24.dp)
+
+                                colors =
+                                    ButtonDefaults.buttonColors(
+                                        containerColor =
+                                            Color(0xFFE49A68)
+                                    ),
+
+                                shape =
+                                    RoundedCornerShape(24.dp)
+
                             ) {
+
                                 Text("Послушать аудиогид")
-                                Spacer(Modifier.width(8.dp))
+
+                                Spacer(
+                                    Modifier.width(8.dp)
+                                )
+
                                 Icon(
                                     Icons.Default.PlayArrow,
                                     contentDescription = null
@@ -277,6 +337,11 @@ fun PlaceDetailScreen(
                         modifier = Modifier.padding(horizontal = 16.dp),
                         color = Color(0xFF1F1F1F),
                         lineHeight = 22.sp
+                    )
+
+
+                    Spacer(
+                        Modifier.height(24.dp)
                     )
 
                     if (!playerError.isNullOrBlank()) {
@@ -339,6 +404,229 @@ fun PlaceDetailScreen(
                             )
                         }
                     }
+
+                    Spacer(
+                        Modifier.height(24.dp)
+                    )
+
+                    Text(
+                        text = "Отзывы и рейтинг",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier =
+                            Modifier.padding(
+                                horizontal = 16.dp
+                            )
+                    )
+
+                    Spacer(
+                        Modifier.height(12.dp)
+                    )
+
+                    Text(
+                        text = "Оцените место",
+                        color = Color.Gray,
+                        fontSize = 14.sp,
+                        modifier =
+                            Modifier.padding(
+                                horizontal = 16.dp
+                            )
+                    )
+
+                    Spacer(
+                        Modifier.height(12.dp)
+                    )
+
+                    if (canReview) {
+
+                        Row(
+
+                            modifier =
+                                Modifier.padding(
+                                    horizontal = 16.dp
+                                )
+
+                        ) {
+
+                            repeat(5) { index ->
+
+                                IconButton(
+
+                                    onClick = {
+
+                                        selectedStars =
+                                            index + 1
+                                    }
+
+                                ) {
+
+                                    Icon(
+
+                                        imageVector =
+
+                                            if (
+                                                index <
+                                                selectedStars
+                                            )
+
+                                                Icons.Default.Star
+
+                                            else
+
+                                                Icons.Outlined.StarBorder,
+
+                                        contentDescription = null,
+
+                                        tint =
+                                            Color(
+                                                0xFFFFC107
+                                            )
+                                    )
+                                }
+                            }
+                            if(selectedStars>0){
+
+                                Spacer(
+                                    Modifier.height(6.dp)
+                                )
+
+                                Text(
+
+                                    text =
+                                        "Ваша оценка: " +
+                                                "$selectedStars/5",
+
+                                    modifier =
+                                        Modifier.padding(
+                                            horizontal=16.dp
+                                        ),
+
+                                    color=
+                                        Color.Gray
+                                )
+                            }
+                        }
+
+                        OutlinedTextField(
+
+                            value =
+                                reviewText,
+
+                            onValueChange = {
+
+                                reviewText = it
+                            },
+
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        horizontal = 16.dp
+                                    ),
+
+                            placeholder = {
+
+                                Text(
+                                    "Напишите отзыв..."
+                                )
+                            }
+                        )
+
+                        Spacer(
+                            Modifier.height(10.dp)
+                        )
+
+                        Button(
+
+                            onClick = {
+
+                                // API позже
+                            },
+
+                            modifier =
+                                Modifier.padding(
+                                    horizontal = 16.dp
+                                )
+
+                        ) {
+
+                            Text(
+                                "Отправить"
+                            )
+                        }
+
+                    } else {
+
+                        Card(
+
+                            modifier =
+                                Modifier
+                                    .fillMaxWidth()
+                                    .padding(
+                                        horizontal = 16.dp
+                                    ),
+
+                            colors =
+                                CardDefaults.cardColors(
+                                    containerColor =
+                                        Color(0xFFF6F4F8)
+                                ),
+
+                            shape =
+                                RoundedCornerShape(
+                                    20.dp
+                                )
+                        ) {
+
+                            Column(
+
+                                modifier =
+                                    Modifier.padding(
+                                        16.dp
+                                    )
+                            ) {
+
+                                Text(
+                                    "Только зарегистрированные пользователи могут оставлять отзывы"
+                                )
+
+                                Spacer(
+                                    Modifier.height(
+                                        8.dp
+                                    )
+                                )
+
+                                Button(
+
+                                    onClick = {
+
+                                        // позже переход на экран входа
+                                    },
+
+                                    colors =
+                                        ButtonDefaults.buttonColors(
+                                            containerColor =
+                                                Color(0xFF5264A5)
+                                        ),
+
+                                    shape =
+                                        RoundedCornerShape(
+                                            18.dp
+                                        )
+
+                                ) {
+
+                                    Text(
+                                        "Войти"
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(
+                        Modifier.height(24.dp)
+                    )
 
                     Spacer(Modifier.height(24.dp))
                 }

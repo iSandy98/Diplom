@@ -18,9 +18,11 @@ class TokenManager(context: Context) {
     fun getRefreshToken(): String? = prefs.getString(KEY_REFRESH, null)
 
     fun clearTokens() {
+
         prefs.edit()
             .remove(KEY_ACCESS)
             .remove(KEY_REFRESH)
+            .remove(KEY_GUEST)
             .apply()
     }
 
@@ -28,8 +30,35 @@ class TokenManager(context: Context) {
         return !getAccessToken().isNullOrBlank()
     }
 
+    fun saveGuestMode(
+        isGuest: Boolean
+    ) {
+
+        prefs.edit()
+            .putBoolean(
+                KEY_GUEST,
+                isGuest
+            )
+            .apply()
+    }
+
+    fun isGuest(): Boolean {
+
+        return prefs.getBoolean(
+            KEY_GUEST,
+            false
+        )
+    }
+
     companion object {
-        private const val KEY_ACCESS = "access_token"
-        private const val KEY_REFRESH = "refresh_token"
+
+        private const val KEY_ACCESS =
+            "access_token"
+
+        private const val KEY_REFRESH =
+            "refresh_token"
+
+        private const val KEY_GUEST =
+            "guest_mode"
     }
 }

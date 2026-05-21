@@ -1,10 +1,18 @@
 package com.example.diplom.ui.theme.screens
 
 data class DistrictListItemUi(
+
     val id: String,
+
     val title: String,
+
     val description: String,
-    val isDownloaded: Boolean = false
+
+    val isDownloaded: Boolean = false,
+
+    val isDownloading: Boolean = false,
+
+    val downloadProgress: Float = 0f
 )
 
 data class DistrictDetailUi(

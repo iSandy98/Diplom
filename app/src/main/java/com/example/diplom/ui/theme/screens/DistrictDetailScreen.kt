@@ -33,6 +33,7 @@ import com.example.diplom.network.PointsRepository
 import com.example.diplom.network.RegionDto
 import com.example.diplom.network.RegionsRepository
 import com.example.diplom.utils.buildImageUrl
+import com.example.diplom.network.OfflineRepository
 
 @Composable
 fun DistrictDetailScreen(
@@ -48,7 +49,9 @@ fun DistrictDetailScreen(
     val context = LocalContext.current
     val regionsRepository = remember { RegionsRepository(context) }
     val pointsRepository = remember { PointsRepository(context) }
-
+    val offlineRepository = remember {
+        OfflineRepository(context)
+    }
     var district by remember { mutableStateOf<RegionDto?>(null) }
     var otherDistricts by remember { mutableStateOf<List<DistrictUi>>(emptyList()) }
     var places by remember { mutableStateOf<List<PlaceUi>>(emptyList()) }
@@ -86,20 +89,104 @@ fun DistrictDetailScreen(
                     )
                 }
 
-            places = pointsResult.getOrDefault(emptyList())
-                .filter { it.region_name == currentDistrictName }
-                .map {
-                    PlaceUi(
-                        id = it.id.toString(),
-                        title = it.name,
-                        description = it.category_name ?: "Описание отсутствует",
-                        locationLabel = buildString {
-                            append(it.region_name ?: "Локация")
-                            if (it.has_audio == true) append(" • Аудиогид")
-                        },
-                        imageUrl = buildImageUrl(it.cover_photo)
+            val onlinePlaces =
+
+                pointsResult
+                    .getOrDefault(
+                        emptyList()
                     )
-                }
+                    .filter {
+
+                        it.region_name ==
+                                currentDistrictName
+                    }
+
+            if(
+                onlinePlaces.isNotEmpty()
+            ){
+
+                places =
+                    onlinePlaces.map {
+
+                        PlaceUi(
+
+                            id =
+                                it.id.toString(),
+
+                            title =
+                                it.name,
+
+                            description =
+                                it.category_name
+                                    ?:
+                                    "Описание отсутствует",
+
+                            locationLabel =
+                                buildString {
+
+                                    append(
+                                        it.region_name
+                                            ?:
+                                            "Локация"
+                                    )
+
+                                    if(
+                                        it.has_audio==
+                                        true
+                                    ){
+
+                                        append(
+                                            " • Аудиогид"
+                                        )
+                                    }
+                                },
+
+                            imageUrl =
+                                buildImageUrl(
+                                    it.cover_photo
+                                )
+                        )
+                    }
+
+            }else{
+
+                val offlinePlaces =
+
+                    offlineRepository
+                        .getRegionPlaces(
+                            currentDistrictName
+                                ?:
+                                ""
+                        )
+
+                places =
+                    offlinePlaces.map {
+
+                        PlaceUi(
+
+                            id =
+                                it.id.toString(),
+
+                            title =
+                                it.name,
+
+                            description =
+                                it.category
+                                    ?:
+                                    "Описание отсутствует",
+
+                            locationLabel =
+                                it.regionName
+                                    ?:
+                                    "Локация",
+
+                            imageUrl =
+                                buildImageUrl(
+                                    it.coverPhoto
+                                )
+                        )
+                    }
+            }
         }
 
         isLoading = false

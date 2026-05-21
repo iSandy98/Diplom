@@ -44,6 +44,9 @@ class AuthRepository(
                 access = response.access,
                 refresh = response.refresh
             )
+            tokenManager.saveGuestMode(
+                false
+            )
             response
         }
     }
@@ -59,6 +62,7 @@ class AuthRepository(
                 access = response.access,
                 refresh = response.refresh
             )
+            tokenManager.saveGuestMode(true)
             response
         }
     }
@@ -95,4 +99,7 @@ class AuthRepository(
     }
 
     fun isLoggedIn(): Boolean = tokenManager.isLoggedIn()
+
+    fun isGuest(): Boolean =
+        tokenManager.isGuest()
 }
