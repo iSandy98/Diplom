@@ -22,4 +22,11 @@ interface OfflineAudioDao {
     suspend fun getAudio(
         pointId:Int
     ): OfflineAudioEntity?
+
+    @Query(
+        "DELETE FROM offline_audio WHERE pointId=:pointId"
+    )
+    suspend fun deleteAudio(
+        pointId:Int
+    )
 }

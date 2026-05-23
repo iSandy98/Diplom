@@ -67,6 +67,13 @@ fun DistrictsScreen(
         )
     }
 
+    var regionSizes by remember {
+
+        mutableStateOf(
+            mapOf<Int,Int>()
+        )
+    }
+
     var downloadingRegionId by remember {
 
         mutableStateOf<Int?>(null)
@@ -288,6 +295,11 @@ fun DistrictsScreen(
                             progress =
                                 downloadProgress,
 
+                            sizeMb =
+                                regionSizes[
+                                    region.id
+                                ] ?: 0,
+
                             onOpen = {
 
                                 onOpenDistrict(
@@ -435,6 +447,19 @@ fun DistrictsScreen(
                                     downloadedIds =
                                         downloadedIds + region.id
 
+                                    regionSizes =
+
+                                        regionSizes +
+
+                                                (
+                                                        region.id to
+
+                                                                offlineRepository
+                                                                    .getRegionSize(
+                                                                        region.name
+                                                                    )
+                                                        )
+
                                 }
                             },
 
@@ -468,7 +493,8 @@ private fun DistrictRowFromApi(
     progress: Float,
     onOpen:()->Unit,
     onToggleDownload:()->Unit,
-    onDelete:()->Unit
+    onDelete:()->Unit,
+    sizeMb:Int=0
 ) {
     Column {
         Row(
@@ -536,7 +562,7 @@ private fun DistrictRowFromApi(
                         Text(
 
                             text =
-                                "✓ Доступно оффлайн • ~34 МБ",
+                                "✓ Доступно оффлайн • ${sizeMb/1000f} МБ",
 
                             color =
                                 Color(0xFF4CAF50),

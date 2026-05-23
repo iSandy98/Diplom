@@ -166,7 +166,7 @@ fun PlaceDetailScreen(
 
             val offlinePlaces =
                 offlineRepository
-                    .getRegionPlaces("Якутск")
+                    .getAllPlaces()
 
             val offlinePlace =
                 offlinePlaces.firstOrNull {
@@ -210,7 +210,9 @@ fun PlaceDetailScreen(
                         region =
                             RegionDto(
                                 id = 0,
-                                name = offlinePlace.regionName ?: "Якутск",
+                                name =
+                                    offlinePlace.regionName
+                                        ?: "Район",
                                 description = null,
                                 image = null,
                                 points_count = null

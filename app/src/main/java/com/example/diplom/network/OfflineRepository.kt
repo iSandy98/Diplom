@@ -78,6 +78,27 @@ class OfflineRepository(
     suspend fun deleteRegion(
         regionName:String
     ){
+
+        val places =
+            dao.getPlacesByRegion(
+                regionName
+            )
+
+        places.forEach {
+
+            photoDao.deletePhotos(
+                it.id
+            )
+
+            audioDao.deleteAudio(
+                it.id
+            )
+        }
+
+        storyDao.deleteStories(
+            regionName
+        )
+
         dao.deleteRegion(
             regionName
         )
@@ -256,6 +277,53 @@ class OfflineRepository(
         audioDao.getAudio(
             pointId
         )
+
+
+    suspend fun getRegionSize(
+        regionName:String
+    ):Int{
+
+        val places =
+            dao.getPlacesByRegion(
+                regionName
+            )
+
+        val stories =
+            storyDao.getStories(
+                regionName
+            )
+
+        var size = 0
+
+        size += places.size * 150
+        size += stories.size * 80
+
+        places.forEach {
+
+            val photos =
+                photoDao.getPhotos(
+                    it.id
+                )
+
+            val audio =
+                audioDao.getAudio(
+                    it.id
+                )
+
+            size += photos.size * 500
+
+            if(audio != null){
+
+                size += 3000
+            }
+        }
+
+        return size
+    }
+
+    suspend fun getAllPlaces() =
+
+        dao.getAllPlaces()
 }
 
 

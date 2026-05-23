@@ -22,4 +22,11 @@ interface OfflinePhotoDao {
     suspend fun getPhotos(
         pointId:Int
     ): List<OfflinePhotoEntity>
+
+    @Query(
+        "DELETE FROM offline_photos WHERE pointId=:pointId"
+    )
+    suspend fun deletePhotos(
+        pointId:Int
+    )
 }

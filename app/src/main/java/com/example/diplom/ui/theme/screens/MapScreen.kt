@@ -261,7 +261,7 @@ fun MapScreen(
 
                 val offlinePlaces =
                     offlineRepository
-                        .getRegionPlaces("Якутск")
+                        .getAllPlaces()
 
             android.util.Log.d(
                 "OFFLINE_MAP",

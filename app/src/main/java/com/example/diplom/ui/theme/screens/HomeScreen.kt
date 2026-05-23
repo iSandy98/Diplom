@@ -98,7 +98,7 @@ fun HomeScreen(
             .onSuccess { data ->
 
                 offlineRepository.saveStories(
-                    "Якутск",
+                    "all",
                     data
                 )
 
@@ -132,7 +132,7 @@ fun HomeScreen(
 
                     offlineRepository
                         .getStories(
-                            "Якутск"
+                            "all"
                         )
 
                 stories =
@@ -220,9 +220,7 @@ fun HomeScreen(
                 val offlinePlaces =
 
                     offlineRepository
-                        .getRegionPlaces(
-                            "Якутск"
-                        )
+                        .getAllPlaces()
 
                 places =
                     offlinePlaces

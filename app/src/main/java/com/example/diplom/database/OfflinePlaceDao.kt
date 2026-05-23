@@ -36,4 +36,10 @@ interface OfflinePlaceDao {
     )
     suspend fun getAllRegionNames():
             List<String>
+
+    @Query(
+        "SELECT * FROM offline_places"
+    )
+    suspend fun getAllPlaces():
+            List<OfflinePlaceEntity>
 }
