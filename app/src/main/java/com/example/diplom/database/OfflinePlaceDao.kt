@@ -30,4 +30,10 @@ interface OfflinePlaceDao {
     suspend fun deleteRegion(
         region:String
     )
+
+    @Query(
+        "SELECT DISTINCT regionName FROM offline_places"
+    )
+    suspend fun getAllRegionNames():
+            List<String>
 }

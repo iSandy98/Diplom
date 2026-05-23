@@ -1,6 +1,7 @@
 package com.example.diplom.utils
 
-const val API_DOMAIN = "http://10.0.2.2:8000"
+const val API_DOMAIN =
+    "https://yave4en.pythonanywhere.com"
 
 fun buildImageUrl(imagePath: String?): String? {
     if (imagePath.isNullOrBlank()) return null

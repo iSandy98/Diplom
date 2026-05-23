@@ -50,6 +50,27 @@ class TokenManager(context: Context) {
         )
     }
 
+    fun saveOfflineAccess(
+        value:Boolean
+    ){
+
+        prefs.edit()
+            .putBoolean(
+                "offline_access",
+                value
+            )
+            .apply()
+    }
+
+    fun canOpenOffline():
+            Boolean{
+
+        return prefs.getBoolean(
+            "offline_access",
+            false
+        )
+    }
+
     companion object {
 
         private const val KEY_ACCESS =

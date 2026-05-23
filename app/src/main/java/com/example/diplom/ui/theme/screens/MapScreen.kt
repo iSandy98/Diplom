@@ -55,6 +55,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.common.MediaItem
 import com.example.diplom.network.PointDetailDto
 import androidx.compose.material.icons.filled.Close
+import com.example.diplom.network.OfflineRepository
 
 data class MapPlaceUi(
     val id: String,
@@ -71,6 +72,7 @@ fun MapScreen(
 ) {
     val context = LocalContext.current
     val repository = remember { PointsRepository(context) }
+    val offlineRepository = remember { OfflineRepository(context) }
     val drivingRouter = remember {
         DirectionsFactory.getInstance().createDrivingRouter(
             DrivingRouterType.COMBINED
@@ -256,8 +258,65 @@ fun MapScreen(
                 )
             }
         }.onFailure {
-            errorText = it.message ?: "Ошибка загрузки точек"
-        }
+
+                val offlinePlaces =
+                    offlineRepository
+                        .getRegionPlaces("Якутск")
+
+            android.util.Log.d(
+                "OFFLINE_MAP",
+                "найдено=${offlinePlaces.size}"
+            )
+
+            offlinePlaces.forEach {
+                android.util.Log.d(
+                    "OFFLINE_MAP",
+                    "${it.name} | ${it.regionName}"
+                )
+            }
+
+                places =
+                    offlinePlaces.mapNotNull {
+
+                        if(
+                            it.latitude != null &&
+                            it.longitude != null
+                        ){
+
+                            MapPlaceUi(
+
+                                id =
+                                    it.id.toString(),
+
+                                title =
+                                    it.name,
+
+                                point =
+                                    Point(
+                                        it.latitude,
+                                        it.longitude
+                                    ),
+
+                                regionName =
+                                    it.regionName,
+
+                                hasAudio =
+                                    it.hasAudio
+                            )
+
+                        } else null
+                    }
+
+                if (places.isEmpty()) {
+
+                    errorText =
+                        "Нет оффлайн данных"
+
+                } else {
+
+                    errorText = null
+                }
+            }
 
         isLoading = false
     }

@@ -27,7 +27,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.example.diplom.network.PointsRepository
 import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.geometry.Point
 import com.yandex.mapkit.map.CameraPosition
@@ -37,59 +36,79 @@ import com.yandex.runtime.image.ImageProvider
 
 @Composable
 fun NearbyMapPreview(
+    places: List<PlaceUi>,
     onClick: () -> Unit
 ) {
     val context = LocalContext.current
-    val repository = remember { PointsRepository(context) }
 
-    var places by remember { mutableStateOf<List<MapPlaceUi>>(emptyList()) }
-    var isLoading by remember { mutableStateOf(true) }
+    val mapPlaces = remember(places) {
 
-    val mapView = remember {
-        MapView(context).apply {
-            mapWindow.map.move(
-                CameraPosition(
-                    Point(62.0281, 129.7326),
-                    13.8f,
-                    0.0f,
-                    0.0f
+        places.mapNotNull {
+
+            val lat =
+                it.latitude
+
+            val lon =
+                it.longitude
+
+            if(
+                lat!=null &&
+                lon!=null
+            ){
+
+                MapPlaceUi(
+
+                    id =
+                        it.id,
+
+                    title =
+                        it.title,
+
+                    point =
+                        Point(
+                            lat,
+                            lon
+                        ),
+
+                    regionName =
+                        "",
+
+                    hasAudio =
+                        false
                 )
-            )
-            mapWindow.map.isNightModeEnabled = true
+
+            }else null
         }
     }
 
-    LaunchedEffect(Unit) {
-        val result = repository.getPoints()
-        result.onSuccess { list ->
-            places = list.mapNotNull { dto ->
-                val lat = dto.latitude
-                val lon = dto.longitude
-                if (lat != null && lon != null) {
-                    MapPlaceUi(
-                        id = dto.id.toString(),
-                        title = dto.name,
-                        point = Point(lat, lon),
-                        regionName = dto.region_name,
-                        hasAudio = dto.has_audio == true
-                    )
-                } else {
-                    null
-                }
-            }
+    var isLoading by remember {
 
-            if (places.isNotEmpty()) {
-                mapView.mapWindow.map.move(
-                    CameraPosition(
-                        places.first().point,
-                        13.4f,
-                        0.0f,
-                        0.0f
-                    )
+        mutableStateOf(false)
+    }
+
+    val mapView = remember {
+
+        MapView(context).apply {
+
+            mapWindow.map.move(
+                CameraPosition(
+                    Point(
+                        62.0281,
+                        129.7326
+                    ),
+                    13.8f,
+                    0f,
+                    0f
                 )
-            }
+            )
+
+            mapWindow.map
+                .isNightModeEnabled = true
         }
-        isLoading = false
+    }
+
+    LaunchedEffect(Unit){
+        isLoading=false
     }
 
     DisposableEffect(mapView) {
@@ -114,7 +133,7 @@ fun NearbyMapPreview(
     ) {
         if (isLoading) {
             CircularProgressIndicator()
-        } else if (places.isEmpty()) {
+        } else if (mapPlaces.isEmpty()) {
             Text("Нет точек для отображения")
         } else {
             AndroidView(
@@ -129,7 +148,7 @@ fun NearbyMapPreview(
 
                     val markerImage = ImageProvider.fromBitmap(markerBitmap)
 
-                    places.forEach { place ->
+                    mapPlaces.forEach { place ->
                         map.mapObjects.addPlacemark().apply {
                             geometry = place.point
                             setIcon(

@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.dp
 import com.example.diplom.R
 import com.example.diplom.network.AuthRepository
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 @Composable
 fun AuthChoiceScreen(
@@ -67,24 +68,69 @@ fun AuthChoiceScreen(
                 text = if (isGuestLoading) "Подключение..." else "Гостевой режим",
                 enabled = !isGuestLoading,
                 onClick = {
+
                     scope.launch {
+
                         isGuestLoading = true
 
-                        val result = repository.loginAsGuest()
+                        try {
 
-                        result.onSuccess {
-                            Toast.makeText(
-                                context,
-                                "Гостевой вход выполнен",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                            onGuestSuccess()
-                        }.onFailure { error ->
-                            Toast.makeText(
-                                context,
-                                error.message ?: "Ошибка гостевого входа",
-                                Toast.LENGTH_LONG
-                            ).show()
+                            val result =
+                                repository
+                                    .loginAsGuest()
+
+                            result.onSuccess {
+
+                                Toast.makeText(
+
+                                    context,
+
+                                    "Гостевой вход выполнен",
+
+                                    Toast.LENGTH_SHORT
+
+                                ).show()
+
+                                onGuestSuccess()
+
+                            }.onFailure {
+
+                                throw Exception()
+                            }
+
+                        } catch (
+                            e: Exception
+                        ) {
+
+                            if(
+                                repository
+                                    .isLoggedIn()
+                            ){
+
+                                Toast.makeText(
+
+                                    context,
+
+                                    "Открыт оффлайн режим",
+
+                                    Toast.LENGTH_SHORT
+
+                                ).show()
+
+                                onGuestSuccess()
+
+                            } else {
+
+                                Toast.makeText(
+
+                                    context,
+
+                                    "Для первого входа нужен интернет",
+
+                                    Toast.LENGTH_LONG
+
+                                ).show()
+                            }
                         }
 
                         isGuestLoading = false

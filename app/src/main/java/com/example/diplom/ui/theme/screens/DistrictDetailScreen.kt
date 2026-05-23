@@ -34,6 +34,7 @@ import com.example.diplom.network.RegionDto
 import com.example.diplom.network.RegionsRepository
 import com.example.diplom.utils.buildImageUrl
 import com.example.diplom.network.OfflineRepository
+import com.example.diplom.network.StoriesRepository
 
 @Composable
 fun DistrictDetailScreen(
@@ -57,11 +58,16 @@ fun DistrictDetailScreen(
     var places by remember { mutableStateOf<List<PlaceUi>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
-    val stories = remember {
-        listOf(
-            StoryUi("1", "Название", "Описание"),
-            StoryUi("2", "Название", "Описание"),
-            StoryUi("3", "Название", "Описание")
+    val storiesRepository =
+        remember {
+            StoriesRepository(
+                context
+            )
+        }
+
+    var stories by remember {
+        mutableStateOf<List<StoryUi>>(
+            emptyList()
         )
     }
 
@@ -69,94 +75,242 @@ fun DistrictDetailScreen(
         isLoading = true
 
         val id = districtId.toIntOrNull()
+        val offlineRegions =
+            offlineRepository
+                .getRegions()
+
+        val fallbackRegionName =
+
+            offlineRegions
+                .firstOrNull {
+
+                    it.id.toString() ==
+                            districtId
+                }
+                ?.name
+                ?: ""
 
         if (id != null) {
-            val districtResult = regionsRepository.getRegionDetail(id)
-            val allRegionsResult = regionsRepository.getRegions()
-            val pointsResult = pointsRepository.getPoints()
+            try {
 
-            district = districtResult.getOrNull()
+                val pointsResult =
+                    pointsRepository
+                        .getPoints()
 
-            val currentDistrictName = district?.name
+                if (pointsResult.isFailure) {
 
-            otherDistricts = allRegionsResult.getOrDefault(emptyList())
-                .filter { it.id != id }
-                .take(5)
-                .map {
-                    DistrictUi(
-                        id = it.id.toString(),
-                        title = it.name
+                    val districtName =
+                        fallbackRegionName
+
+                    android.util.Log.d(
+                        "OFFLINE_CHECK",
+                        "Ищу район=$districtName"
                     )
+
+                    val offlinePlaces =
+                        offlineRepository
+                            .getRegionPlaces(
+                                districtName
+                            )
+
+                    android.util.Log.d(
+                        "OFFLINE_CHECK",
+                        "Нашли=${offlinePlaces.size}"
+                    )
+
+                    places =
+                        offlinePlaces.map {
+
+                            PlaceUi(
+                                id = it.id.toString(),
+                                title = it.name,
+                                description =
+                                    it.category ?: "Описание",
+
+                                locationLabel =
+                                    it.regionName ?: "",
+
+                                imageUrl =
+                                    buildImageUrl(
+                                        it.coverPhoto
+                                    ),
+
+                                latitude =
+                                    it.latitude,
+
+                                longitude =
+                                    it.longitude
+                            )
+                        }
+
+                    android.util.Log.d(
+                        "OFFLINE_CHECK",
+                        "placesUI=${places.size}"
+                    )
+
+                    district =
+                        RegionDto(
+                            id = id,
+                            name = districtName,
+                            description = "",
+                            image = null,
+                            points_count = null
+                        )
+
+                    isLoading = false
+
+                    return@LaunchedEffect
                 }
 
-            val onlinePlaces =
+                val districtResult =
+                    regionsRepository
+                        .getRegionDetail(id)
 
-                pointsResult
-                    .getOrDefault(
-                        emptyList()
-                    )
-                    .filter {
+                val allRegionsResult =
+                    regionsRepository
+                        .getRegions()
 
-                        it.region_name ==
-                                currentDistrictName
-                    }
+                val storiesResult =
+                    storiesRepository
+                        .getStories()
 
-            if(
-                onlinePlaces.isNotEmpty()
+                stories =
+                    storiesResult
+                        .getOrDefault(
+                            emptyList()
+                        )
+                        .take(5)
+                        .map {
+
+                            StoryUi(
+                                id =
+                                    it.id.toString(),
+
+                                title =
+                                    it.title,
+
+                                subtitle =
+                                    it.description ?: "",
+
+                                imageUrl =
+                                    buildImageUrl(
+                                        it.image
+                                    )
+                            )
+                        }
+
+                district =
+                    districtResult.getOrNull()
+
+                val currentDistrictName =
+
+                    district?.name
+                        ?.replace(
+                            "Город ",
+                            ""
+                        )
+                        ?.trim()
+
+                otherDistricts =
+                    allRegionsResult
+                        .getOrDefault(
+                            emptyList()
+                        )
+                        .filter {
+                            it.id != id
+                        }
+                        .take(5)
+                        .map {
+
+                            DistrictUi(
+
+                                id =
+                                    it.id.toString(),
+
+                                title =
+                                    it.name,
+
+                                imageUrl =
+                                    buildImageUrl(
+                                        it.image
+                                    )
+                            )
+                        }
+
+                val onlinePlaces =
+
+                    pointsResult
+                        .getOrDefault(
+                            emptyList()
+                        )
+                        .filter {
+
+                            it.region_name
+                                ?.trim()
+                                ?.contains(
+                                    currentDistrictName ?: "",
+                                    ignoreCase = true
+                                ) == true
+                        }
+
+
+                if(
+                    onlinePlaces.isNotEmpty()
+                ){
+
+                    places =
+                        onlinePlaces.map {
+
+                            PlaceUi(
+                                id = it.id.toString(),
+                                title = it.name,
+                                description =
+                                    it.category_name
+                                        ?: "Описание отсутствует",
+
+                                locationLabel =
+                                    it.region_name
+                                        ?: "Локация",
+
+                                imageUrl =
+                                    buildImageUrl(
+                                        it.cover_photo
+                                    ),
+
+                                latitude =
+                                    it.latitude,
+
+                                longitude =
+                                    it.longitude
+                            )
+                        }
+                }
+
+            }catch(
+                e: Exception
             ){
 
-                places =
-                    onlinePlaces.map {
+                val districtName =
 
-                        PlaceUi(
-
-                            id =
-                                it.id.toString(),
-
-                            title =
-                                it.name,
-
-                            description =
-                                it.category_name
-                                    ?:
-                                    "Описание отсутствует",
-
-                            locationLabel =
-                                buildString {
-
-                                    append(
-                                        it.region_name
-                                            ?:
-                                            "Локация"
-                                    )
-
-                                    if(
-                                        it.has_audio==
-                                        true
-                                    ){
-
-                                        append(
-                                            " • Аудиогид"
-                                        )
-                                    }
-                                },
-
-                            imageUrl =
-                                buildImageUrl(
-                                    it.cover_photo
-                                )
+                    district?.name
+                        ?.replace(
+                            "Город ",
+                            ""
                         )
-                    }
+                        ?.trim()
 
-            }else{
+                        ?: fallbackRegionName
+
+                android.util.Log.d(
+                    "OFFLINE_CHECK",
+                    "Ищу район=$districtName"
+                )
 
                 val offlinePlaces =
 
                     offlineRepository
                         .getRegionPlaces(
-                            currentDistrictName
-                                ?:
-                                ""
+                            districtName
                         )
 
                 places =
@@ -172,22 +326,40 @@ fun DistrictDetailScreen(
 
                             description =
                                 it.category
-                                    ?:
-                                    "Описание отсутствует",
+                                    ?: "Описание",
 
                             locationLabel =
-                                it.regionName
-                                    ?:
-                                    "Локация",
+                                it.regionName ?: "",
 
                             imageUrl =
                                 buildImageUrl(
                                     it.coverPhoto
-                                )
+                                ),
+
+                            latitude =
+                                it.latitude,
+
+                            longitude =
+                                it.longitude
                         )
                     }
+
+                android.util.Log.d(
+                    "OFFLINE_CHECK",
+                    "placesUI=${places.size}"
+                )
+
+                android.util.Log.d(
+                    "OFFLINE_CHECK",
+                    "Нашли: ${offlinePlaces.size}"
+                )
             }
         }
+
+        android.util.Log.d(
+            "OFFLINE_CHECK",
+            "FINAL=${places.size}"
+        )
 
         isLoading = false
     }
@@ -244,7 +416,16 @@ fun DistrictDetailScreen(
         }
 
         item {
+
+            Text(
+                text = "Точек: ${places.size}",
+                color = Color.Red
+            )
+        }
+
+        item {
             NearbyMapPreview(
+                places = places,
                 onClick = onOpenMap
             )
         }

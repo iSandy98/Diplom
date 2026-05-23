@@ -5,6 +5,7 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
 
+
 data class RegisterRequest(
     val email: String,
     val password: String,
@@ -171,4 +172,12 @@ interface ApiService {
     suspend fun getStoryDetail(
         @Path("id") id: Int
     ): StoryDto
+
+    @GET("api/regions/{id}/offline/")
+    suspend fun getOfflineRegion(
+
+        @Path("id")
+        id: Int
+
+    ): RegionOfflineResponse
 }

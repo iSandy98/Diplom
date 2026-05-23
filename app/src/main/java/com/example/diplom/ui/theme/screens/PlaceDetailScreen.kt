@@ -28,6 +28,7 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import coil.compose.AsyncImage
 import com.example.diplom.network.PointDetailDto
+import com.example.diplom.network.RegionDto
 import com.example.diplom.network.PointsRepository
 import kotlinx.coroutines.delay
 import java.time.OffsetDateTime
@@ -38,8 +39,12 @@ import androidx.compose.material.icons.outlined.StarBorder
 import com.example.diplom.network.AuthRepository
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import com.example.diplom.network.OfflineRepository
+import com.example.diplom.network.PhotoDto
+import com.example.diplom.network.AudioGuideDto
 
-private const val API_DOMAIN = "http://10.0.2.2:8000"
+private const val API_DOMAIN =
+    "https://yave4en.pythonanywhere.com"
 
 @Composable
 fun PlaceDetailScreen(
@@ -48,6 +53,10 @@ fun PlaceDetailScreen(
 ) {
     val context = LocalContext.current
     val repository = remember { PointsRepository(context) }
+    val offlineRepository =
+        remember {
+            OfflineRepository(context)
+        }
     val authRepository = remember {
         AuthRepository(context)
     }
@@ -137,11 +146,108 @@ fun PlaceDetailScreen(
             return@LaunchedEffect
         }
 
-        val result = repository.getPointDetail(id)
+        val result =
+            repository.getPointDetail(id)
+
         result.onSuccess {
+
             place = it
+
+            offlineRepository.savePhotos(
+                pointId = it.id,
+                photos = it.photos ?: emptyList()
+            )
+
+            offlineRepository.saveAudio(
+                pointId = it.id,
+                audio = it.audio_guide
+            )
         }.onFailure {
-            errorText = it.message ?: "Ошибка загрузки достопримечательности"
+
+            val offlinePlaces =
+                offlineRepository
+                    .getRegionPlaces("Якутск")
+
+            val offlinePlace =
+                offlinePlaces.firstOrNull {
+
+                    it.id == id
+                }
+
+            if (offlinePlace != null) {
+
+                val offlinePhotos =
+                    offlineRepository.getPhotos(
+                        offlinePlace.id
+                    )
+
+                val offlineAudio =
+                    offlineRepository.getAudio(
+                        offlinePlace.id
+                    )
+
+                place =
+                    PointDetailDto(
+
+                        id =
+                            offlinePlace.id,
+
+                        name =
+                            offlinePlace.name,
+
+                        description =
+                            offlinePlace.category
+                                ?: "Описание отсутствует",
+
+                        latitude =
+                            offlinePlace.latitude,
+
+                        longitude =
+                            offlinePlace.longitude,
+
+                        category = null,
+
+                        region =
+                            RegionDto(
+                                id = 0,
+                                name = offlinePlace.regionName ?: "Якутск",
+                                description = null,
+                                image = null,
+                                points_count = null
+                            ),
+
+                        photos =
+                            offlinePhotos.map {
+
+                                PhotoDto(
+                                    id = it.id,
+                                    image = it.image,
+                                    caption = it.caption,
+                                    order = 0
+                                )
+                            },
+
+                        audio_guide =
+                            offlineAudio?.let {
+
+                                AudioGuideDto(
+                                    id = 0,
+                                    audio_file = it.audioUrl,
+                                    duration_seconds = it.duration,
+                                    language = "ru"
+                                )
+                            },
+
+                        created_at = null,
+
+                        updated_at = null
+                    )
+
+            } else {
+
+                errorText =
+                    "Место не найдено оффлайн"
+            }
         }
 
         isLoading = false

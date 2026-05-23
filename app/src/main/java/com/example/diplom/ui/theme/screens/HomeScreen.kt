@@ -49,6 +49,7 @@ import com.example.diplom.network.PointsRepository
 import com.example.diplom.network.RegionsRepository
 import com.example.diplom.network.StoriesRepository
 import com.example.diplom.utils.buildImageUrl
+import com.example.diplom.network.OfflineRepository
 
 @Composable
 fun HomeScreen(
@@ -64,6 +65,10 @@ fun HomeScreen(
     val regionsRepository = remember { RegionsRepository(context) }
     val pointsRepository = remember { PointsRepository(context) }
     val storiesRepository = remember { StoriesRepository(context) }
+    val offlineRepository =
+        remember {
+            OfflineRepository(context)
+        }
 
     var districts by remember { mutableStateOf<List<DistrictUi>>(emptyList()) }
     var stories by remember { mutableStateOf<List<StoryUi>>(emptyList()) }
@@ -86,34 +91,173 @@ fun HomeScreen(
             }
         isDistrictsLoading = false
 
-        val storiesResult = storiesRepository.getStories()
-        stories = storiesResult.getOrDefault(emptyList())
-            .take(5)
-            .map {
-                StoryUi(
-                    id = it.id.toString(),
-                    title = it.title,
-                    subtitle = it.description ?: "",
-                    imageUrl = buildImageUrl(it.image)
+        val storiesResult =
+            storiesRepository.getStories()
+
+        storiesResult
+            .onSuccess { data ->
+
+                offlineRepository.saveStories(
+                    "Якутск",
+                    data
                 )
+
+                stories =
+                    data
+                        .take(5)
+                        .map {
+
+                            StoryUi(
+
+                                id =
+                                    it.id.toString(),
+
+                                title =
+                                    it.title,
+
+                                subtitle =
+                                    it.description ?: "",
+
+                                imageUrl =
+                                    buildImageUrl(
+                                        it.image
+                                    )
+                            )
+                        }
             }
+
+            .onFailure {
+
+                val offlineStories =
+
+                    offlineRepository
+                        .getStories(
+                            "Якутск"
+                        )
+
+                stories =
+                    offlineStories
+                        .take(5)
+                        .map {
+
+                            StoryUi(
+
+                                id =
+                                    it.id.toString(),
+
+                                title =
+                                    it.title,
+
+                                subtitle =
+                                    it.description ?: "",
+
+                                imageUrl =
+                                    buildImageUrl(
+                                        it.image
+                                    )
+                            )
+                        }
+            }
+
         isStoriesLoading = false
 
-        val pointsResult = pointsRepository.getPoints()
-        places = pointsResult.getOrDefault(emptyList())
-            .take(6)
-            .map {
-                PlaceUi(
-                    id = it.id.toString(),
-                    title = it.name,
-                    description = it.category_name ?: "Описание отсутствует",
-                    locationLabel = buildString {
-                        append(it.region_name ?: "Локация")
-                        if (it.has_audio == true) append(" • Аудиогид")
-                    },
-                    imageUrl = buildImageUrl(it.cover_photo)
-                )
+        val pointsResult =
+            pointsRepository.getPoints()
+
+        pointsResult
+            .onSuccess { data ->
+
+                places =
+                    data
+                        .take(6)
+                        .map {
+
+                            PlaceUi(
+
+                                id =
+                                    it.id.toString(),
+
+                                title =
+                                    it.name,
+
+                                description =
+                                    it.category_name
+                                        ?: "Описание",
+
+                                locationLabel =
+                                    buildString {
+
+                                        append(
+                                            it.region_name
+                                                ?: ""
+                                        )
+
+                                        if(
+                                            it.has_audio==true
+                                        ){
+                                            append(
+                                                " • Аудиогид"
+                                            )
+                                        }
+                                    },
+
+                                imageUrl =
+                                    buildImageUrl(
+                                        it.cover_photo
+                                    ),
+
+                                latitude =
+                                    it.latitude,
+
+                                longitude =
+                                    it.longitude
+                            )
+                        }
             }
+
+            .onFailure {
+
+                val offlinePlaces =
+
+                    offlineRepository
+                        .getRegionPlaces(
+                            "Якутск"
+                        )
+
+                places =
+                    offlinePlaces
+                        .take(6)
+                        .map {
+
+                            PlaceUi(
+
+                                id =
+                                    it.id.toString(),
+
+                                title =
+                                    it.name,
+
+                                description =
+                                    it.category
+                                        ?: "Описание",
+
+                                locationLabel =
+                                    it.regionName ?: "",
+
+                                imageUrl =
+                                    buildImageUrl(
+                                        it.coverPhoto
+                                    ),
+
+                                latitude =
+                                    it.latitude,
+
+                                longitude =
+                                    it.longitude
+                            )
+                        }
+            }
+
         isPlacesLoading = false
     }
 
@@ -170,6 +314,7 @@ fun HomeScreen(
 
         item {
             NearbyMapPreview(
+                places = places,
                 onClick = onOpenMap
             )
         }

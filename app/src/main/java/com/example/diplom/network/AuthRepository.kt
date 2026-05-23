@@ -25,6 +25,10 @@ class AuthRepository(
                 access = response.access,
                 refresh = response.refresh
             )
+            tokenManager
+                .saveOfflineAccess(
+                    true
+                )
             response
         }
     }
@@ -44,6 +48,10 @@ class AuthRepository(
                 access = response.access,
                 refresh = response.refresh
             )
+            tokenManager
+                .saveOfflineAccess(
+                    true
+                )
             tokenManager.saveGuestMode(
                 false
             )
@@ -62,6 +70,10 @@ class AuthRepository(
                 access = response.access,
                 refresh = response.refresh
             )
+            tokenManager
+                .saveOfflineAccess(
+                    true
+                )
             tokenManager.saveGuestMode(true)
             response
         }

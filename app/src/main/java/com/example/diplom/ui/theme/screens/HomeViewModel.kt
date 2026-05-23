@@ -19,11 +19,20 @@ data class StoryUi(
 )
 
 data class PlaceUi(
+
     val id: String,
+
     val title: String,
+
     val description: String,
+
     val locationLabel: String,
-    val imageUrl: String? = null
+
+    val imageUrl: String? = null,
+
+    val latitude: Double? = null,
+
+    val longitude: Double? = null
 )
 
 data class HomeUiState(

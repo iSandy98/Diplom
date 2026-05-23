@@ -29,8 +29,11 @@ import androidx.compose.material.icons.outlined.Delete
 import com.example.diplom.network.PointsRepository
 import com.example.diplom.network.OfflineRepository
 import kotlinx.coroutines.launch
+import com.example.diplom.utils.buildImageUrl
+import com.example.diplom.network.OfflineRegionRepository
 
-private const val API_DOMAIN = "http://10.0.2.2:8000"
+private const val API_DOMAIN =
+    "https://yave4en.pythonanywhere.com"
 
 @Composable
 fun DistrictsScreen(
@@ -42,6 +45,15 @@ fun DistrictsScreen(
     val pointsRepository = remember {
         PointsRepository(context)
     }
+
+    val offlineRegionRepository =
+        remember {
+
+            OfflineRegionRepository(
+                context
+            )
+        }
+
     val offlineRepository = remember {
         OfflineRepository(context)
     }
@@ -68,12 +80,68 @@ fun DistrictsScreen(
     var errorText by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
-        val result = repository.getRegions()
-        result.onSuccess {
-            regions = it
-        }.onFailure {
-            errorText = it.message ?: "Ошибка загрузки районов"
+
+        try {
+
+            val result =
+                repository
+                    .getRegions()
+
+            result.onSuccess {
+
+                regions = it
+
+                scope.launch {
+
+                    offlineRepository
+                        .saveRegions(it)
+
+                    downloadedIds =
+
+                        offlineRepository
+                            .getDownloadedIds()
+                }
+            }
+
+        } catch(
+            e: Exception
+        ){
+
+            val offlineRegions =
+
+                offlineRepository
+                    .getRegions()
+
+            regions =
+
+                offlineRegions.map {
+
+                    RegionDto(
+
+                        id =
+                            it.id,
+
+                        name =
+                            it.name,
+
+                        description =
+                            it.description,
+
+                        image =
+                            it.image,
+
+                        points_count =
+                            null
+                    )
+                }
+            downloadedIds =
+
+                offlineRepository
+                    .getDownloadedIds()
+
+            errorText = null
         }
+
         isLoading = false
     }
 
@@ -239,7 +307,7 @@ fun DistrictsScreen(
                                 downloadProgress = 0f
 
                                 scope.launch {
-
+                                /*
                                     val pointsResult =
                                         pointsRepository
                                             .getPoints()
@@ -251,17 +319,122 @@ fun DistrictsScreen(
                                             )
                                             .filter {
 
-                                                it.region_name ==
-                                                        region.name
+                                                it.region_name
+                                                    ?.trim()
+                                                    ?.contains(
+                                                        region.name.trim(),
+                                                        ignoreCase = true
+                                                    ) == true
                                             }
+                                    android.util.Log.d(
+                                        "OFFLINE_TEST",
+                                        "Район=${region.name}"
+                                    )
 
-                                    offlineRepository
-                                        .saveRegionPlaces(
+                                    districtPlaces.forEach {
 
-                                            region.name,
-
-                                            districtPlaces
+                                        android.util.Log.d(
+                                            "OFFLINE_TEST",
+                                            "Точка=${it.name} | ${it.region_name}"
                                         )
+                                    }
+
+                                    android.util.Log.d(
+                                        "OFFLINE_TEST",
+                                        "Количество=${districtPlaces.size}"
+                                    )
+                            */
+                                    val result =
+
+                                        offlineRegionRepository
+                                            .getOfflineRegion(
+                                                region.id
+                                            )
+
+                                    result.onSuccess {
+
+                                        offlineRepository
+                                            .saveRegions(
+                                                listOf(
+                                                    it.region
+                                                )
+                                            )
+
+                                        offlineRepository
+                                            .saveStories(
+                                                region.name,
+                                                it.stories
+                                            )
+
+                                        offlineRepository
+                                            .saveRegionPlaces(
+
+                                                region.name,
+
+                                                it.places.map { place ->
+
+                                                    com.example.diplom.network
+                                                        .PointListDto(
+
+                                                            id = place.id,
+
+                                                            name = place.name,
+
+                                                            category_name =
+                                                                place.category?.name,
+
+                                                            region_name =
+                                                                place.region?.name,
+
+                                                            latitude =
+                                                                place.latitude,
+
+                                                            longitude =
+                                                                place.longitude,
+
+                                                            cover_photo =
+                                                                place.photos
+                                                                    ?.firstOrNull()
+                                                                    ?.image,
+
+                                                            has_audio =
+                                                                place.audio_guide != null,
+
+                                                            created_at =
+                                                                place.created_at
+                                                        )
+                                                }
+                                            )
+                                        it.places.forEach { place ->
+
+                                            offlineRepository
+                                                .savePhotos(
+
+                                                    pointId =
+                                                        place.id,
+
+                                                    photos =
+                                                        place.photos
+                                                            ?: emptyList()
+                                                )
+
+                                            offlineRepository
+                                                .saveAudio(
+
+                                                    pointId =
+                                                        place.id,
+
+                                                    audio =
+                                                        place.audio_guide
+                                                )
+                                        }
+                                    }
+
+
+
+                                    downloadedIds =
+                                        downloadedIds + region.id
+
                                 }
                             },
 
@@ -454,12 +627,3 @@ private fun DistrictRowFromApi(
     }
 }
 
-private fun buildImageUrl(imagePath: String?): String? {
-    if (imagePath.isNullOrBlank()) return null
-
-    return when {
-        imagePath.startsWith("http://") || imagePath.startsWith("https://") -> imagePath
-        imagePath.startsWith("/") -> "$API_DOMAIN$imagePath"
-        else -> "$API_DOMAIN/$imagePath"
-    }
-}
