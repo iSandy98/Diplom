@@ -7,16 +7,17 @@ class OfflineRegionRepository(
 ) {
 
     private val api =
-        RetrofitInstance.create(context)
+        RetrofitInstance.create(
+            context
+        )
 
     suspend fun getOfflineRegion(
         id:Int
-    ): Result<RegionOfflineResponse> {
+    )=
+        runCatching {
 
-        return runCatching {
-
-            api.getOfflineRegion(id)
-
+            api.getOfflineRegion(
+                id
+            )
         }
-    }
 }

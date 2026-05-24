@@ -50,6 +50,7 @@ import com.example.diplom.network.RegionsRepository
 import com.example.diplom.network.StoriesRepository
 import com.example.diplom.utils.buildImageUrl
 import com.example.diplom.network.OfflineRepository
+import androidx.compose.ui.text.style.TextOverflow
 
 @Composable
 fun HomeScreen(
@@ -236,16 +237,28 @@ fun HomeScreen(
                                     it.name,
 
                                 description =
-                                    it.category
+                                    it.description
+                                        ?: it.category
                                         ?: "Описание",
 
                                 locationLabel =
                                     it.regionName ?: "",
 
                                 imageUrl =
-                                    buildImageUrl(
+
+                                    if(
                                         it.coverPhoto
-                                    ),
+                                            ?.startsWith("/data/")
+                                        == true
+                                    )
+
+                                        "file://${it.coverPhoto}"
+
+                                    else
+
+                                        buildImageUrl(
+                                            it.coverPhoto
+                                        ),
 
                                 latitude =
                                     it.latitude,
@@ -574,14 +587,15 @@ fun PlaceItem(
             Spacer(modifier = Modifier.height(2.dp))
 
             Text(
-                text = item.description,
+                text =
+                    item.locationLabel,
+
                 style = TextStyle(
-                    fontSize = 14.sp,
-                    lineHeight = 20.sp,
-                    letterSpacing = 0.25.sp
+                    fontSize = 14.sp
                 ),
-                color = Color(0xFF49454F),
-                modifier = Modifier.widthIn(max = 210.dp)
+
+                color =
+                    Color(0xFF49454F)
             )
 
             Spacer(modifier = Modifier.height(8.dp))
@@ -601,7 +615,10 @@ fun PlaceItem(
                 Text(
                     text = item.locationLabel,
                     style = TextStyle(fontSize = 12.sp),
-                    color = Color(0xFF49454F)
+                    color = Color(0xFF49454F),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f)
                 )
             }
         }

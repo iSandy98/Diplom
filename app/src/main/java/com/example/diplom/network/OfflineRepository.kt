@@ -3,6 +3,7 @@ package com.example.diplom.network
 import android.content.Context
 import com.example.diplom.database.DatabaseProvider
 import com.example.diplom.database.OfflinePlaceEntity
+import com.example.diplom.database.OfflineStoryEntity
 
 
 class OfflineRepository(
@@ -39,9 +40,14 @@ class OfflineRepository(
 
                 OfflinePlaceEntity(
 
-                    id = it.id,
+                    id =
+                        it.id,
 
-                    name = it.name,
+                    name =
+                        it.name,
+
+                    description =
+                        it.description,
 
                     category =
                         it.category_name,
@@ -168,24 +174,26 @@ class OfflineRepository(
 
             stories.map {
 
-                com.example.diplom.database
-                    .OfflineStoryEntity(
+                OfflineStoryEntity(
 
-                        id =
-                            it.id,
+                    id =
+                        it.id,
 
-                        title =
-                            it.title,
+                    title =
+                        it.title,
 
-                        description =
-                            it.description,
+                    description =
+                        it.description,
 
-                        image =
-                            it.image,
+                    image =
+                        it.image,
 
-                        regionName =
-                            regionName
-                    )
+                    regionName =
+                        regionName,
+
+                    createdAt =
+                        it.created_at
+                )
             }
         )
     }
@@ -324,6 +332,20 @@ class OfflineRepository(
     suspend fun getAllPlaces() =
 
         dao.getAllPlaces()
+
+
+    suspend fun getDownloadedRegions() =
+
+        regionDao
+            .getRegions()
+
+            .filter { region ->
+
+                dao.getAllRegionNames()
+                    .contains(
+                        region.name
+                    )
+            }
 }
 
 

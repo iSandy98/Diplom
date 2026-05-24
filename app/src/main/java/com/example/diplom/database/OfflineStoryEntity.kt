@@ -15,5 +15,7 @@ data class OfflineStoryEntity(
 
     val image:String?,
 
-    val regionName:String?
+    val regionName:String,
+
+    val createdAt:String?
 )

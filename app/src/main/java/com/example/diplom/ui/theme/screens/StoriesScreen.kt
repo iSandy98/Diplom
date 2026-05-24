@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.diplom.network.StoriesRepository
 import com.example.diplom.utils.buildImageUrl
+import com.example.diplom.network.OfflineRepository
 
 data class StoryGridItemUi(
     val id: String,
@@ -58,22 +59,75 @@ fun StoriesScreen(
 ) {
     val context = LocalContext.current
     val repository = remember { StoriesRepository(context) }
+    val offlineRepository =
+        remember {
+            OfflineRepository(context)
+        }
 
     var query by remember { mutableStateOf("") }
     var stories by remember { mutableStateOf<List<StoryGridItemUi>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
-        val result = repository.getStories()
-        stories = result.getOrDefault(emptyList())
-            .map {
-                StoryGridItemUi(
-                    id = it.id.toString(),
-                    title = it.title,
-                    subtitle = it.description ?: "",
-                    imageUrl = buildImageUrl(it.image)
-                )
-            }
+
+        val result =
+            repository.getStories()
+
+        result.onSuccess {
+
+            stories =
+
+                it.map {
+
+                    StoryGridItemUi(
+
+                        id =
+                            it.id.toString(),
+
+                        title =
+                            it.title,
+
+                        subtitle =
+                            it.description
+                                ?: "",
+
+                        imageUrl =
+                            buildImageUrl(
+                                it.image
+                            )
+                    )
+                }
+
+        }.onFailure {
+
+            stories =
+
+                offlineRepository
+                    .getStories(
+                        "all"
+                    )
+                    .map {
+
+                        StoryGridItemUi(
+
+                            id =
+                                it.id.toString(),
+
+                            title =
+                                it.title,
+
+                            subtitle =
+                                it.description
+                                    ?: "",
+
+                            imageUrl =
+                                buildImageUrl(
+                                    it.image
+                                )
+                        )
+                    }
+        }
+
         isLoading = false
     }
 

@@ -40,6 +40,7 @@ import com.example.diplom.utils.buildImageUrl
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+import com.example.diplom.database.DatabaseProvider
 
 @Composable
 fun StoryDetailScreen(
@@ -48,6 +49,12 @@ fun StoryDetailScreen(
 ) {
     val context = LocalContext.current
     val repository = remember { StoriesRepository(context) }
+
+    val database =
+        remember {
+            DatabaseProvider
+                .getDatabase(context)
+        }
 
     var story by remember { mutableStateOf<StoryDto?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -64,11 +71,46 @@ fun StoryDetailScreen(
             return@LaunchedEffect
         }
 
-        val result = repository.getStoryDetail(id)
+        val result =
+            repository.getStoryDetail(id)
+
         result.onSuccess {
+
             story = it
+
         }.onFailure {
-            errorText = it.message ?: "Ошибка загрузки истории"
+
+            val offlineStory =
+
+                database
+                    .offlineStoryDao()
+                    .getStory(id)
+
+            if(offlineStory!=null){
+
+                story = StoryDto(
+
+                    id =
+                        offlineStory.id,
+
+                    title =
+                        offlineStory.title,
+
+                    description =
+                        offlineStory.description,
+
+                    image =
+                        offlineStory.image,
+
+                    created_at =
+                        offlineStory.createdAt
+                )
+
+            }else{
+
+                errorText =
+                    "История недоступна оффлайн"
+            }
         }
 
         isLoading = false

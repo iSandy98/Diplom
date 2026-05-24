@@ -9,19 +9,21 @@ import androidx.room.PrimaryKey
 data class OfflinePlaceEntity(
 
     @PrimaryKey
-    val id: Int,
+    val id:Int,
 
-    val name: String,
+    val name:String,
 
-    val category: String?,
+    val description:String?,
 
-    val regionName: String?,
+    val category:String?,
 
-    val latitude: Double?,
+    val regionName:String?,
 
-    val longitude: Double?,
+    val latitude:Double?,
 
-    val coverPhoto: String?,
+    val longitude:Double?,
 
-    val hasAudio: Boolean
+    val coverPhoto:String?,
+
+    val hasAudio:Boolean
 )

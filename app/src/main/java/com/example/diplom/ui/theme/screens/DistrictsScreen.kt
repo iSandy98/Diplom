@@ -31,6 +31,9 @@ import com.example.diplom.network.OfflineRepository
 import kotlinx.coroutines.launch
 import com.example.diplom.utils.buildImageUrl
 import com.example.diplom.network.OfflineRegionRepository
+import com.example.diplom.network.ImageDownloader
+import com.example.diplom.database.DatabaseProvider
+import com.example.diplom.database.OfflineStoryEntity
 
 private const val API_DOMAIN =
     "https://yave4en.pythonanywhere.com"
@@ -42,11 +45,8 @@ fun DistrictsScreen(
 ) {
     val context = LocalContext.current
     val repository = remember { RegionsRepository(context) }
-    val pointsRepository = remember {
-        PointsRepository(context)
-    }
 
-    val offlineRegionRepository =
+    val offlineBundleRepository =
         remember {
 
             OfflineRegionRepository(
@@ -57,6 +57,22 @@ fun DistrictsScreen(
     val offlineRepository = remember {
         OfflineRepository(context)
     }
+
+    val database =
+        remember {
+            DatabaseProvider
+                .getDatabase(context)
+        }
+
+    val imageDownloader =
+
+        remember{
+
+            ImageDownloader(
+                context
+            )
+        }
+
     val scope = rememberCoroutineScope()
     var query by remember { mutableStateOf("") }
     var regions by remember { mutableStateOf<List<RegionDto>>(emptyList()) }
@@ -117,7 +133,7 @@ fun DistrictsScreen(
             val offlineRegions =
 
                 offlineRepository
-                    .getRegions()
+                    .getDownloadedRegions()
 
             regions =
 
@@ -158,34 +174,6 @@ fun DistrictsScreen(
         } else {
             regions.filter { it.name.contains(query, ignoreCase = true) }
         }
-    }
-
-    LaunchedEffect(
-        downloadingRegionId
-    ){
-
-        if(
-            downloadingRegionId==null
-        ) return@LaunchedEffect
-
-        for(
-        i in 1..100
-        ){
-
-            kotlinx.coroutines.delay(
-                60
-            )
-
-            downloadProgress =
-                i/100f
-        }
-
-        downloadedIds =
-            downloadedIds +
-                    downloadingRegionId!!
-
-        downloadingRegionId =
-            null
     }
 
     Column(
@@ -358,107 +346,191 @@ fun DistrictsScreen(
                             */
                                     val result =
 
-                                        offlineRegionRepository
+                                        offlineBundleRepository
                                             .getOfflineRegion(
                                                 region.id
                                             )
 
-                                    result.onSuccess {
+                                    result.onSuccess { bundle ->
 
-                                        offlineRepository
-                                            .saveRegions(
-                                                listOf(
-                                                    it.region
+                                        offlineRepository.saveRegions(
+                                            listOf(bundle.region)
+                                        )
+
+                                        offlineRepository.saveStories(
+                                            bundle.region.name,
+                                            bundle.stories
+                                        )
+
+                                        offlineRepository.saveRegionPlaces(
+                                            bundle.region.name,
+                                            bundle.points.map { point ->
+                                                val originalUrl =
+                                                    point.photos
+                                                        .firstOrNull()
+                                                        ?.url
+
+                                                android.util.Log.d(
+                                                    "COVER_TEST",
+                                                    "url=$originalUrl"
                                                 )
-                                            )
 
-                                        offlineRepository
-                                            .saveStories(
-                                                region.name,
-                                                it.stories
-                                            )
+                                                val localCover =
 
-                                        offlineRepository
-                                            .saveRegionPlaces(
+                                                    originalUrl?.let { photoUrl ->
 
-                                                region.name,
+                                                        val downloaded =
 
-                                                it.places.map { place ->
+                                                            imageDownloader
+                                                                .downloadImage(
 
-                                                    com.example.diplom.network
-                                                        .PointListDto(
+                                                                    url =
+                                                                        buildImageUrl(photoUrl)
+                                                                            ?: "",
 
-                                                            id = place.id,
+                                                                    fileName =
+                                                                        "cover_${point.id}.jpg"
+                                                                )
 
-                                                            name = place.name,
-
-                                                            category_name =
-                                                                place.category?.name,
-
-                                                            region_name =
-                                                                place.region?.name,
-
-                                                            latitude =
-                                                                place.latitude,
-
-                                                            longitude =
-                                                                place.longitude,
-
-                                                            cover_photo =
-                                                                place.photos
-                                                                    ?.firstOrNull()
-                                                                    ?.image,
-
-                                                            has_audio =
-                                                                place.audio_guide != null,
-
-                                                            created_at =
-                                                                place.created_at
+                                                        android.util.Log.d(
+                                                            "COVER_TEST",
+                                                            "saved=$downloaded"
                                                         )
+
+                                                        downloaded
+                                                    }
+
+                                                com.example.diplom.network.PointListDto(
+
+                                                    id = point.id,
+
+                                                    name = point.name,
+
+                                                    category_name = point.category_slug,
+
+                                                    region_name = bundle.region.name,
+
+                                                    latitude = point.latitude,
+
+                                                    longitude = point.longitude,
+
+                                                    cover_photo = localCover,
+
+                                                    has_audio = point.audio != null,
+
+                                                    description = point.description,
+
+                                                    created_at = point.updated_at
+                                                )
+                                            }
+                                        )
+
+                                        val totalPoints =
+                                            bundle.points.size
+
+                                        var currentPoint = 0
+
+                                        bundle.points.forEach { point ->
+
+                                            offlineRepository.savePhotos(
+                                                pointId = point.id,
+                                                photos = point.photos.map { photo ->
+
+                                                    val localPath =
+
+                                                        photo.url?.let {
+
+                                                            imageDownloader
+                                                                .downloadImage(
+
+                                                                    url =
+                                                                        buildImageUrl(it)
+                                                                            ?: "",
+
+                                                                    fileName =
+                                                                        "photo_${photo.id}.jpg"
+                                                                )
+                                                        }
+
+                                                    com.example.diplom.network.PhotoDto(
+
+                                                        id =
+                                                            photo.id,
+
+                                                        image =
+                                                            localPath,
+
+                                                        caption =
+                                                            photo.caption,
+
+                                                        order =
+                                                            photo.order
+                                                    )
                                                 }
                                             )
-                                        it.places.forEach { place ->
 
-                                            offlineRepository
-                                                .savePhotos(
+                                            database
+                                                .offlineStoryDao()
+                                                .saveStories(
 
-                                                    pointId =
-                                                        place.id,
+                                                    bundle.stories.map {
 
-                                                    photos =
-                                                        place.photos
-                                                            ?: emptyList()
-                                                )
+                                                        OfflineStoryEntity(
 
-                                            offlineRepository
-                                                .saveAudio(
+                                                            id = it.id,
 
-                                                    pointId =
-                                                        place.id,
+                                                            title = it.title,
 
-                                                    audio =
-                                                        place.audio_guide
-                                                )
-                                        }
-                                    }
+                                                            description = it.description,
 
+                                                            image = it.image,
 
+                                                            regionName =
+                                                                bundle.region.name,
 
-                                    downloadedIds =
-                                        downloadedIds + region.id
-
-                                    regionSizes =
-
-                                        regionSizes +
-
-                                                (
-                                                        region.id to
-
-                                                                offlineRepository
-                                                                    .getRegionSize(
-                                                                        region.name
-                                                                    )
+                                                            createdAt =
+                                                                it.created_at
                                                         )
+                                                    }
+                                                )
+
+
+                                            offlineRepository.saveAudio(
+                                                pointId = point.id,
+                                                audio = point.audio
+                                            )
+
+                                            currentPoint++
+
+                                            downloadProgress =
+                                                currentPoint.toFloat() /
+                                                        totalPoints
+                                        }
+
+                                        downloadedIds =
+                                            downloadedIds + region.id
+
+                                        regionSizes =
+                                            regionSizes + (
+                                                    region.id to offlineRepository.getRegionSize(
+                                                        bundle.region.name
+                                                    )
+                                                    )
+
+                                        downloadProgress = 1f
+
+                                        downloadedIds =
+                                            downloadedIds + region.id
+
+                                        downloadingRegionId =
+                                            null
+                                    }
+                                    result.onFailure {
+
+                                        downloadingRegionId = null
+
+                                        downloadProgress = 0f
+                                    }
 
                                 }
                             },

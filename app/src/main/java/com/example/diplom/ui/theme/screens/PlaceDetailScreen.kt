@@ -196,7 +196,7 @@ fun PlaceDetailScreen(
                             offlinePlace.name,
 
                         description =
-                            offlinePlace.category
+                            offlinePlace.description
                                 ?: "Описание отсутствует",
 
                         latitude =
@@ -305,7 +305,7 @@ fun PlaceDetailScreen(
                             .verticalScroll(
                                 rememberScrollState()
                             )
-                        .padding(bottom = if (showPlayer) 140.dp else 0.dp)
+                            .padding(bottom = if (showPlayer) 140.dp else 0.dp)
                 ) {
                     Spacer(Modifier.height(16.dp))
 
@@ -352,7 +352,7 @@ fun PlaceDetailScreen(
                             Modifier.height(8.dp)
                         )
 
-                        if(currentPlace.audio_guide==null){
+                        if (currentPlace.audio_guide == null) {
 
                             Text(
 
@@ -470,25 +470,57 @@ fun PlaceDetailScreen(
                             .fillMaxWidth()
                             .height(220.dp)
                     ) { page ->
+
                         if (photos.isNotEmpty()) {
+
                             AsyncImage(
-                                model = buildImageUrl(photos[page].image),
-                                contentDescription = photos[page].caption,
-                                modifier = Modifier
-                                    .padding(horizontal = 16.dp)
-                                    .fillMaxSize()
-                                    .clip(RoundedCornerShape(20.dp)),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .padding(horizontal = 16.dp)
-                                    .fillMaxSize()
-                                    .background(
-                                        Color(0xFFE7E3EB),
-                                        RoundedCornerShape(20.dp)
+
+                                model =
+
+                                    if (
+                                        photos[page]
+                                            .image
+                                            ?.startsWith("/data/")
+                                        == true
                                     )
+
+                                        "file://${photos[page].image}"
+                                    else
+
+                                        buildImageUrl(
+                                            photos[page].image
+                                        ),
+
+                                contentDescription =
+                                    photos[page].caption,
+
+                                modifier =
+                                    Modifier
+                                        .padding(horizontal = 16.dp)
+                                        .fillMaxSize()
+                                        .clip(
+                                            RoundedCornerShape(
+                                                20.dp
+                                            )
+                                        ),
+
+                                contentScale =
+                                    ContentScale.Crop
+                            )
+
+                        } else {
+
+                            Box(
+                                modifier =
+                                    Modifier
+                                        .padding(horizontal = 16.dp)
+                                        .fillMaxSize()
+                                        .background(
+                                            Color(0xFFE7E3EB),
+                                            RoundedCornerShape(
+                                                20.dp
+                                            )
+                                        )
                             )
                         }
                     }
@@ -578,7 +610,6 @@ fun PlaceDetailScreen(
                                             )
 
                                                 Icons.Default.Star
-
                                             else
 
                                                 Icons.Outlined.StarBorder,
@@ -592,7 +623,7 @@ fun PlaceDetailScreen(
                                     )
                                 }
                             }
-                            if(selectedStars>0){
+                            if (selectedStars > 0) {
 
                                 Spacer(
                                     Modifier.height(6.dp)
@@ -606,10 +637,10 @@ fun PlaceDetailScreen(
 
                                     modifier =
                                         Modifier.padding(
-                                            horizontal=16.dp
+                                            horizontal = 16.dp
                                         ),
 
-                                    color=
+                                    color =
                                         Color.Gray
                                 )
                             }
@@ -739,6 +770,8 @@ fun PlaceDetailScreen(
                     Spacer(Modifier.height(24.dp))
                 }
 
+
+
                 if (showPlayer && currentPlace.audio_guide != null) {
                     val audio = currentPlace.audio_guide!!
                     val safeDuration = if (duration > 0) duration else 1L
@@ -763,7 +796,22 @@ fun PlaceDetailScreen(
                             ) {
                                 if (photos.isNotEmpty()) {
                                     AsyncImage(
-                                        model = buildImageUrl(photos.first().image),
+                                        model =
+
+                                            if(
+                                                photos.first()
+                                                    .image
+                                                    ?.startsWith("/data/")
+                                                == true
+                                            )
+
+                                                "file://${photos.first().image}"
+
+                                            else
+
+                                                buildImageUrl(
+                                                    photos.first().image
+                                                ),
                                         contentDescription = currentPlace.name,
                                         modifier = Modifier
                                             .size(48.dp)

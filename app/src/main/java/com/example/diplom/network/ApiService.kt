@@ -81,15 +81,26 @@ data class AudioGuideDto(
 )
 
 data class PointListDto(
-    val id: Int,
-    val name: String,
-    val category_name: String?,
-    val region_name: String?,
-    val latitude: Double?,
-    val longitude: Double?,
-    val cover_photo: String?,
-    val has_audio: Boolean?,
-    val created_at: String?
+
+    val id:Int,
+
+    val name:String,
+
+    val description:String?,
+
+    val category_name:String?,
+
+    val region_name:String?,
+
+    val latitude:Double?,
+
+    val longitude:Double?,
+
+    val cover_photo:String?,
+
+    val has_audio:Boolean?,
+
+    val created_at:String?
 )
 
 data class PointDetailDto(
@@ -119,6 +130,51 @@ data class StoryDto(
     val description: String?,
     val image: String?,
     val created_at: String?
+)
+
+data class OfflineRegionBundleDto(
+
+    val version: String?,
+
+    val region: RegionDto,
+
+    val points: List<PointOfflineDto>,
+
+    val routes: List<Any>,
+
+    val stories: List<StoryDto>
+)
+
+data class PointOfflineDto(
+
+    val id: Int,
+
+    val name: String,
+
+    val description: String?,
+
+    val latitude: Double?,
+
+    val longitude: Double?,
+
+    val category_slug: String?,
+
+    val photos: List<PhotoOfflineDto>,
+
+    val audio: AudioGuideDto?,
+
+    val updated_at: String?
+)
+
+data class PhotoOfflineDto(
+
+    val id: Int,
+
+    val url: String?,
+
+    val caption: String?,
+
+    val order: Int?
 )
 
 interface ApiService {
@@ -173,11 +229,15 @@ interface ApiService {
         @Path("id") id: Int
     ): StoryDto
 
-    @GET("api/regions/{id}/offline/")
+    @GET(
+        "api/regions/{id}/offline/"
+    )
     suspend fun getOfflineRegion(
 
         @Path("id")
-        id: Int
+        id:Int
 
-    ): RegionOfflineResponse
+    ): OfflineRegionBundleDto
+
+
 }

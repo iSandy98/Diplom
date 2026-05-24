@@ -13,7 +13,21 @@ interface OfflineStoryDao {
             OnConflictStrategy.REPLACE
     )
     suspend fun saveStories(
-        stories: List<OfflineStoryEntity>
+        stories:List<OfflineStoryEntity>
+    )
+
+    @Query(
+        "SELECT * FROM offline_stories WHERE id=:id"
+    )
+    suspend fun getStory(
+        id:Int
+    ): OfflineStoryEntity?
+
+    @Query(
+        "DELETE FROM offline_stories WHERE regionName=:regionName"
+    )
+    suspend fun deleteStories(
+        regionName:String
     )
 
     @Query(
@@ -22,11 +36,4 @@ interface OfflineStoryDao {
     suspend fun getStories(
         regionName:String
     ): List<OfflineStoryEntity>
-
-    @Query(
-        "DELETE FROM offline_stories WHERE regionName=:regionName"
-    )
-    suspend fun deleteStories(
-        regionName:String
-    )
 }
