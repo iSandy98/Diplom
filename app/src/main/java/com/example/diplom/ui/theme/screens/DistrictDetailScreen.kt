@@ -35,6 +35,7 @@ import com.example.diplom.network.RegionsRepository
 import com.example.diplom.utils.buildImageUrl
 import com.example.diplom.network.OfflineRepository
 import com.example.diplom.network.StoriesRepository
+import com.example.diplom.utils.CurrentRegionManager
 
 @Composable
 fun DistrictDetailScreen(
@@ -53,6 +54,14 @@ fun DistrictDetailScreen(
     val offlineRepository = remember {
         OfflineRepository(context)
     }
+    val currentRegionManager =
+
+        remember{
+
+            CurrentRegionManager(
+                context
+            )
+        }
     var district by remember { mutableStateOf<RegionDto?>(null) }
     var otherDistricts by remember { mutableStateOf<List<DistrictUi>>(emptyList()) }
     var places by remember { mutableStateOf<List<PlaceUi>>(emptyList()) }
@@ -201,6 +210,16 @@ fun DistrictDetailScreen(
 
                 district =
                     districtResult.getOrNull()
+
+                district =
+                    districtResult.getOrNull()
+
+                district?.name
+                    ?.let {
+
+                        currentRegionManager
+                            .saveRegion(it)
+                    }
 
                 val currentDistrictName =
 
@@ -412,14 +431,6 @@ fun DistrictDetailScreen(
             SectionHeader(
                 title = "Рядом со мной",
                 onClick = onOpenMap
-            )
-        }
-
-        item {
-
-            Text(
-                text = "Точек: ${places.size}",
-                color = Color.Red
             )
         }
 

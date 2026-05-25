@@ -14,6 +14,9 @@ import com.example.diplom.ui.theme.screens.OnboardingScreen
 import com.example.diplom.ui.theme.screens.OtpVerificationScreen
 import com.example.diplom.ui.theme.screens.PasswordChangedScreen
 import com.example.diplom.ui.theme.screens.RegistrationScreen
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
+import com.example.diplom.utils.OnboardingManager
 
 private object Routes {
     const val ONBOARDING = "onboarding"
@@ -30,15 +33,45 @@ private object Routes {
 
 @Composable
 fun AppNav() {
-    val nav = rememberNavController()
+
+    val nav =
+        rememberNavController()
+
+    val context =
+        LocalContext.current
+
+    val onboardingManager =
+
+        remember {
+
+            OnboardingManager(
+                context
+            )
+        }
+
+    val startScreen =
+
+        if(
+            onboardingManager
+                .isFirstLaunch()
+        )
+
+            Routes.ONBOARDING
+
+        else
+
+            Routes.AUTH_CHOICE
 
     NavHost(
         navController = nav,
-        startDestination = Routes.ONBOARDING
+        startDestination =
+            startScreen
     ) {
         composable(Routes.ONBOARDING) {
             OnboardingScreen(
                 onFinish = {
+                    onboardingManager
+                        .completeOnboarding()
                     nav.navigate(Routes.AUTH_CHOICE) {
                         popUpTo(Routes.ONBOARDING) { inclusive = true }
                     }

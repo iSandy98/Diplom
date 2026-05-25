@@ -4,7 +4,8 @@ import android.content.Context
 import com.example.diplom.database.DatabaseProvider
 import com.example.diplom.database.OfflinePlaceEntity
 import com.example.diplom.database.OfflineStoryEntity
-
+import java.io.File
+import com.example.diplom.database.OfflineRegionEntity
 
 class OfflineRepository(
     context: Context
@@ -92,9 +93,45 @@ class OfflineRepository(
 
         places.forEach {
 
+            val photos =
+
+                photoDao.getPhotos(
+                    it.id
+                )
+
+            photos.forEach { photo ->
+
+                photo.image
+                    ?.let { path ->
+
+                        File(path)
+                            .delete()
+                    }
+            }
+
+            it.coverPhoto
+                ?.let { path ->
+
+                    File(path)
+                        .delete()
+                }
+
             photoDao.deletePhotos(
                 it.id
             )
+
+            val audio =
+
+                audioDao.getAudio(
+                    it.id
+                )
+
+            audio?.audioUrl
+                ?.let { path ->
+
+                    File(path)
+                        .delete()
+                }
 
             audioDao.deleteAudio(
                 it.id
@@ -118,21 +155,31 @@ class OfflineRepository(
 
             regions.map {
 
-                com.example.diplom.database
-                    .OfflineRegionEntity(
+                val oldRegion =
 
-                        id =
-                            it.id,
+                    regionDao
+                        .getRegions()
+                        .firstOrNull {
+                                old ->
+                            old.id == it.id
+                        }
 
-                        name =
-                            it.name,
+                        OfflineRegionEntity(
 
-                        description =
-                            it.description,
+                    id = it.id,
 
-                        image =
-                            it.image
-                    )
+                    name = it.name,
+
+                    description =
+                        it.description,
+
+                    image =
+                        it.image,
+
+                    isDownloaded =
+                        oldRegion?.isDownloaded
+                            ?: false
+                )
             }
         )
     }
@@ -147,18 +194,12 @@ class OfflineRepository(
 
             Set<Int>{
 
-        return dao
-            .getAllRegionNames()
-            .mapNotNull { regionName ->
+        return getDownloadedRegions()
 
-                regionDao
-                    .getRegions()
-                    .firstOrNull {
-
-                        it.name ==
-                                regionName
-                    }?.id
+            .map {
+                it.id
             }
+
             .toSet()
     }
 
@@ -289,7 +330,7 @@ class OfflineRepository(
 
     suspend fun getRegionSize(
         regionName:String
-    ):Int{
+    ):Float{
 
         val places =
             dao.getPlacesByRegion(
@@ -313,20 +354,59 @@ class OfflineRepository(
                     it.id
                 )
 
+            photos.forEach { photo ->
+
+                photo.image
+                    ?.let { path ->
+
+                        val file =
+                            File(path)
+
+                        if(file.exists()){
+
+                            size +=
+                                file.length()
+                                    .toInt()
+                        }
+                    }
+            }
+
+            it.coverPhoto
+                ?.let { path ->
+
+                    val file =
+                        File(path)
+
+                    if(file.exists()){
+
+                        size +=
+                            file.length()
+                                .toInt()
+                    }
+                }
+
             val audio =
                 audioDao.getAudio(
                     it.id
                 )
 
-            size += photos.size * 500
+            audio?.audioUrl
+                ?.let { path ->
 
-            if(audio != null){
+                    val file =
+                        File(path)
 
-                size += 3000
-            }
+                    if(file.exists()){
+
+                        size +=
+                            file.length()
+                                .toInt()
+                    }
+                }
         }
 
-        return size
+        return size.toFloat() /
+                (1024f*1024f)
     }
 
     suspend fun getAllPlaces() =
@@ -334,18 +414,10 @@ class OfflineRepository(
         dao.getAllPlaces()
 
 
-    suspend fun getDownloadedRegions() =
+    suspend fun getDownloadedRegions()=
 
         regionDao
-            .getRegions()
-
-            .filter { region ->
-
-                dao.getAllRegionNames()
-                    .contains(
-                        region.name
-                    )
-            }
+            .getDownloadedRegions()
 }
 
 

@@ -15,5 +15,7 @@ data class OfflineRegionEntity(
 
     val description:String?,
 
-    val image:String?
+    val image:String?,
+
+    val isDownloaded:Boolean=false
 )

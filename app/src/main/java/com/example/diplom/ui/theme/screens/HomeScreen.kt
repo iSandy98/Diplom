@@ -51,6 +51,7 @@ import com.example.diplom.network.StoriesRepository
 import com.example.diplom.utils.buildImageUrl
 import com.example.diplom.network.OfflineRepository
 import androidx.compose.ui.text.style.TextOverflow
+import com.example.diplom.utils.CurrentRegionManager
 
 @Composable
 fun HomeScreen(
@@ -71,6 +72,31 @@ fun HomeScreen(
             OfflineRepository(context)
         }
 
+    val currentRegionManager =
+
+        remember{
+
+            CurrentRegionManager(
+                context
+            )
+        }
+
+    var currentRegion by remember {
+
+        mutableStateOf(
+
+            currentRegionManager
+                .getRegion()
+
+                .replace(
+                    "Город ",
+                    ""
+                )
+
+                .trim()
+        )
+    }
+
     var districts by remember { mutableStateOf<List<DistrictUi>>(emptyList()) }
     var stories by remember { mutableStateOf<List<StoryUi>>(emptyList()) }
     var places by remember { mutableStateOf<List<PlaceUi>>(emptyList()) }
@@ -79,7 +105,7 @@ fun HomeScreen(
     var isStoriesLoading by remember { mutableStateOf(true) }
     var isPlacesLoading by remember { mutableStateOf(true) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(currentRegion) {
         val regionsResult = regionsRepository.getRegions()
         districts = regionsResult.getOrDefault(emptyList())
             .take(5)
@@ -168,9 +194,25 @@ fun HomeScreen(
         pointsResult
             .onSuccess { data ->
 
-                places =
-                    data
+                val regionPlaces =
+
+                    data.filter {
+
+                        it.region_name
+                            ?.contains(
+                                currentRegion,
+                                ignoreCase = true
+                            ) == true
+                    }
+
+                val randomPlaces =
+
+                    regionPlaces
+                        .shuffled()
                         .take(6)
+
+                places =
+                    randomPlaces
                         .map {
 
                             PlaceUi(
@@ -221,10 +263,13 @@ fun HomeScreen(
                 val offlinePlaces =
 
                     offlineRepository
-                        .getAllPlaces()
+                        .getRegionPlaces(
+                            currentRegion
+                        )
 
                 places =
                     offlinePlaces
+                        .shuffled()
                         .take(6)
                         .map {
 
@@ -281,7 +326,12 @@ fun HomeScreen(
     ) {
         item {
             HomeTopBar(
-                onOpenProfile = onOpenProfile
+
+                title =
+                    currentRegion,
+
+                onOpenProfile =
+                    onOpenProfile
             )
         }
 
@@ -369,7 +419,8 @@ fun HomeScreen(
         item {
             SectionHeader(
                 title = "Интересные места",
-                onClick = {}
+                onClick = {},
+                showArrow = false
             )
         }
 
@@ -397,7 +448,12 @@ fun HomeScreen(
 }
 
 @Composable
-fun HomeTopBar(onOpenProfile: () -> Unit) {
+fun HomeTopBar(
+
+    title:String,
+
+    onOpenProfile:()->Unit
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -420,7 +476,7 @@ fun HomeTopBar(onOpenProfile: () -> Unit) {
         }
 
         Text(
-            text = "Город Якутск",
+            text = title,
             style = TextStyle(
                 fontSize = 28.sp,
                 lineHeight = 36.sp
@@ -433,7 +489,8 @@ fun HomeTopBar(onOpenProfile: () -> Unit) {
 @Composable
 fun SectionHeader(
     title: String,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    showArrow:Boolean=true
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -449,12 +506,25 @@ fun SectionHeader(
             color = Color(0xFF1F1F1F)
         )
 
-        Text(
-            text = "→",
-            modifier = Modifier.clickable { onClick() },
-            style = TextStyle(fontSize = 24.sp),
-            color = Color(0xFF1F1F1F)
-        )
+        if(showArrow){
+
+            Text(
+                text = "→",
+
+                modifier =
+                    Modifier.clickable {
+                        onClick()
+                    },
+
+                style =
+                    TextStyle(
+                        fontSize = 24.sp
+                    ),
+
+                color =
+                    Color(0xFF1F1F1F)
+            )
+        }
     }
 }
 

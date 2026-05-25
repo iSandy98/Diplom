@@ -75,6 +75,10 @@ fun DistrictsScreen(
 
     val scope = rememberCoroutineScope()
     var query by remember { mutableStateOf("") }
+    var selectedTab by remember {
+
+        mutableIntStateOf(0)
+    }
     var regions by remember { mutableStateOf<List<RegionDto>>(emptyList()) }
     var downloadedIds by remember {
 
@@ -82,11 +86,17 @@ fun DistrictsScreen(
             setOf<Int>()
         )
     }
+    var downloadedRegions by remember {
+
+        mutableStateOf<List<RegionDto>>(
+            emptyList()
+        )
+    }
 
     var regionSizes by remember {
 
         mutableStateOf(
-            mapOf<Int,Int>()
+            mapOf<Int, Float>()
         )
     }
 
@@ -123,6 +133,53 @@ fun DistrictsScreen(
 
                         offlineRepository
                             .getDownloadedIds()
+
+                    downloadedRegions =
+
+                        offlineRepository
+                            .getDownloadedRegions()
+
+                            .map {
+
+                                RegionDto(
+
+                                    id = it.id,
+
+                                    name = it.name,
+
+                                    description =
+                                        it.description,
+
+                                    image =
+                                        it.image,
+
+                                    points_count =
+                                        null
+                                )
+                            }
+
+                    val sizes = mutableMapOf<Int, Float>()
+
+                    downloadedIds.forEach { id ->
+
+                        val region =
+
+                            regions.firstOrNull {
+                                it.id == id
+                            }
+
+                        if(region != null){
+
+                            sizes[id] =
+
+                                offlineRepository
+                                    .getRegionSize(
+                                        region.name
+                                    )
+                        }
+                    }
+
+                    regionSizes = sizes
                 }
             }
 
@@ -130,22 +187,33 @@ fun DistrictsScreen(
             e: Exception
         ){
 
+            downloadedIds =
+
+                offlineRepository
+                    .getDownloadedIds()
+
             val offlineRegions =
 
                 offlineRepository
-                    .getDownloadedRegions()
+                    .getRegions()
 
-            regions =
+                    .filter {
+
+                        downloadedIds
+                            .contains(
+                                it.id
+                            )
+                    }
+
+            downloadedRegions =
 
                 offlineRegions.map {
 
                     RegionDto(
 
-                        id =
-                            it.id,
+                        id = it.id,
 
-                        name =
-                            it.name,
+                        name = it.name,
 
                         description =
                             it.description,
@@ -157,10 +225,26 @@ fun DistrictsScreen(
                             null
                     )
                 }
-            downloadedIds =
 
-                offlineRepository
-                    .getDownloadedIds()
+            regions =
+                downloadedRegions
+
+            val sizes =
+                mutableMapOf<Int,Float>()
+
+            downloadedRegions
+                .forEach { region ->
+
+                    sizes[region.id] =
+
+                        offlineRepository
+                            .getRegionSize(
+                                region.name
+                            )
+                }
+
+            regionSizes =
+                sizes
 
             errorText = null
         }
@@ -168,13 +252,33 @@ fun DistrictsScreen(
         isLoading = false
     }
 
-    val filteredRegions = remember(query, regions) {
-        if (query.isBlank()) {
-            regions
+    val source =
+
+        if(selectedTab==1){
+
+            downloadedRegions
+
         } else {
-            regions.filter { it.name.contains(query, ignoreCase = true) }
+
+            regions
         }
-    }
+
+    val filteredRegions =
+
+        if(query.isBlank()){
+
+            source
+
+        } else {
+
+            source.filter {
+
+                it.name.contains(
+                    query,
+                    true
+                )
+            }
+        }
 
     Column(
         modifier = Modifier
@@ -240,6 +344,48 @@ fun DistrictsScreen(
 
         Spacer(Modifier.height(12.dp))
 
+        TabRow(
+            selectedTabIndex =
+                selectedTab
+        ) {
+
+            Tab(
+                selected =
+                    selectedTab==0,
+
+                onClick = {
+                    selectedTab=0
+                },
+
+                text = {
+
+                    Text(
+
+                        "Все (${regions.size})"
+                    )
+                }
+            )
+
+            Tab(
+                selected =
+                    selectedTab==1,
+
+                onClick = {
+                    selectedTab=1
+                },
+
+                text = {
+
+                    Text(
+
+                        "Скачанные (${downloadedIds.size})"
+                    )
+                }
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+
         when {
             isLoading -> {
                 Box(
@@ -286,7 +432,7 @@ fun DistrictsScreen(
                             sizeMb =
                                 regionSizes[
                                     region.id
-                                ] ?: 0,
+                                ] ?: 0f,
 
                             onOpen = {
 
@@ -353,9 +499,17 @@ fun DistrictsScreen(
 
                                     result.onSuccess { bundle ->
 
+
                                         offlineRepository.saveRegions(
                                             listOf(bundle.region)
                                         )
+
+                                        database
+                                            .offlineRegionDao()
+                                            .markDownloaded(
+                                                region.id
+                                            )
+
 
                                         offlineRepository.saveStories(
                                             bundle.region.name,
@@ -503,24 +657,32 @@ fun DistrictsScreen(
                                             currentPoint++
 
                                             downloadProgress =
-                                                currentPoint.toFloat() /
-                                                        totalPoints
+
+                                                if(totalPoints>0)
+
+                                                    currentPoint.toFloat() /
+                                                            totalPoints
+
+                                                else 1f
                                         }
 
                                         downloadedIds =
                                             downloadedIds + region.id
 
+                                        val size: Float =
+
+                                            offlineRepository
+                                                .getRegionSize(
+                                                    bundle.region.name
+                                                )
+
                                         regionSizes =
-                                            regionSizes + (
-                                                    region.id to offlineRepository.getRegionSize(
-                                                        bundle.region.name
-                                                    )
-                                                    )
+                                            regionSizes + mapOf(
+                                                region.id to size
+                                            )
 
                                         downloadProgress = 1f
 
-                                        downloadedIds =
-                                            downloadedIds + region.id
 
                                         downloadingRegionId =
                                             null
@@ -539,6 +701,16 @@ fun DistrictsScreen(
 
                                 downloadedIds =
                                     downloadedIds -
+                                            region.id
+
+                                downloadedRegions =
+                                    downloadedRegions.filter {
+
+                                        it.id != region.id
+                                    }
+
+                                regionSizes =
+                                    regionSizes -
                                             region.id
 
                                 scope.launch {
@@ -566,7 +738,7 @@ private fun DistrictRowFromApi(
     onOpen:()->Unit,
     onToggleDownload:()->Unit,
     onDelete:()->Unit,
-    sizeMb:Int=0
+    sizeMb:Float=0f
 ) {
     Column {
         Row(
@@ -634,7 +806,8 @@ private fun DistrictRowFromApi(
                         Text(
 
                             text =
-                                "✓ Доступно оффлайн • ${sizeMb/1000f} МБ",
+                                "✓ Доступно оффлайн • %.1f МБ"
+                                    .format(sizeMb),
 
                             color =
                                 Color(0xFF4CAF50),

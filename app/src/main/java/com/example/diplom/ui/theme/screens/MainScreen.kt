@@ -54,12 +54,30 @@ fun MainScreen(
     val gold = Color(0xFFFFD382)
 
     val isHomeSelected =
-        currentRoute == MainRoute.Home.route ||
-                currentRoute == MainRoute.Districts.route ||
-                currentRoute.startsWith("district_detail") ||
-                currentRoute == MainRoute.Stories.route ||
-                currentRoute.startsWith("place_detail") ||
-                currentRoute == MainRoute.EditProfile.route
+
+        currentRoute in listOf(
+
+            MainRoute.Home.route,
+
+            MainRoute.Districts.route,
+
+            MainRoute.Stories.route,
+
+            MainRoute.EditProfile.route
+
+        ) ||
+
+                currentRoute.startsWith(
+                    "district_detail"
+                ) ||
+
+                currentRoute.startsWith(
+                    "place_detail"
+                ) ||
+
+                currentRoute.startsWith(
+                    "story_detail"
+                )
 
     val isMapSelected = currentRoute == MainRoute.Map.route
     val isProfileSelected = currentRoute == MainRoute.Profile.route
@@ -74,13 +92,23 @@ fun MainScreen(
                 NavigationBarItem(
                     selected = isHomeSelected,
                     onClick = {
-                        navController.navigate(MainRoute.Home.route) {
-                            popUpTo(MainRoute.Home.route) {
+
+                        navController.navigate(
+                            MainRoute.Home.route
+                        ){
+
+                            popUpTo(
+                                navController.graph
+                                    .findStartDestination().id
+                            ){
+
+                                saveState= false
                                 inclusive = false
-                                saveState = true
                             }
-                            launchSingleTop = true
-                            restoreState = true
+
+                            launchSingleTop=true
+
+                            restoreState=true
                         }
                     },
                     icon = {
@@ -102,12 +130,23 @@ fun MainScreen(
                 NavigationBarItem(
                     selected = isMapSelected,
                     onClick = {
-                        navController.navigate(MainRoute.Map.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+
+                        navController.navigate(
+                            MainRoute.Map.route
+                        ) {
+
+                            popUpTo(
+                                navController.graph
+                                    .findStartDestination().id
+                            ) {
+
+                                saveState = false
+                                inclusive = false
                             }
+
                             launchSingleTop = true
-                            restoreState = true
+
+                            restoreState = false
                         }
                     },
                     icon = {
@@ -129,12 +168,23 @@ fun MainScreen(
                 NavigationBarItem(
                     selected = isProfileSelected,
                     onClick = {
-                        navController.navigate(MainRoute.Profile.route) {
-                            popUpTo(navController.graph.findStartDestination().id) {
-                                saveState = true
+
+                        navController.navigate(
+                            MainRoute.Profile.route
+                        ) {
+
+                            popUpTo(
+                                navController.graph
+                                    .findStartDestination().id
+                            ) {
+
+                                saveState = false
+                                inclusive = false
                             }
+
                             launchSingleTop = true
-                            restoreState = true
+
+                            restoreState = false
                         }
                     },
                     icon = {
@@ -208,14 +258,7 @@ fun MainScreen(
                 ProfileScreen(
                     isGuest = isGuest,
                     onBack = {
-                        navController.navigate(MainRoute.Home.route) {
-                            popUpTo(MainRoute.Home.route) {
-                                inclusive = false
-                                saveState = true
-                            }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
+                        navController.popBackStack()
                     },
                     onEditProfile = {
                         navController.navigate(MainRoute.EditProfile.route)
