@@ -346,7 +346,13 @@ fun DistrictsScreen(
 
         TabRow(
             selectedTabIndex =
-                selectedTab
+                selectedTab,
+
+            containerColor =
+                Color.White,
+
+            contentColor =
+                Color(0xFF1F1F1F)
         ) {
 
             Tab(
@@ -357,10 +363,15 @@ fun DistrictsScreen(
                     selectedTab=0
                 },
 
+                selectedContentColor =
+                    Color(0xFF1F1F1F),
+
+                unselectedContentColor =
+                    Color(0xFF666666),
+
                 text = {
 
                     Text(
-
                         "Все (${regions.size})"
                     )
                 }
@@ -373,6 +384,12 @@ fun DistrictsScreen(
                 onClick = {
                     selectedTab=1
                 },
+
+                selectedContentColor =
+                    Color(0xFF1F1F1F),
+
+                unselectedContentColor =
+                    Color(0xFF666666),
 
                 text = {
 

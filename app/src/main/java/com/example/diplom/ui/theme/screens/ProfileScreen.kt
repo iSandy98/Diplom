@@ -151,7 +151,8 @@ fun ProfileScreen(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF1F1F1F)
+                                containerColor = Color(0xFF1F1F1F),
+                                contentColor = Color.White
                             )
                         ) {
                             Text("Редактировать профиль")
@@ -165,7 +166,8 @@ fun ProfileScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF1F1F1F)
+                            containerColor = Color(0xFF1F1F1F),
+                            contentColor = Color.White
                         )
                     ) {
                         Text("Выйти")
