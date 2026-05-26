@@ -56,6 +56,8 @@ import androidx.media3.common.MediaItem
 import com.example.diplom.network.PointDetailDto
 import androidx.compose.material.icons.filled.Close
 import com.example.diplom.network.OfflineRepository
+import com.example.diplom.network.RouteDetailDto
+import kotlinx.coroutines.launch
 
 data class MapPlaceUi(
     val id: String,
@@ -147,10 +149,21 @@ fun MapScreen(
         mutableStateOf(setOf<String>())
     }
 
+
+    var routes by remember {
+        mutableStateOf<List<RouteDetailDto>>(emptyList())
+    }
+
+    var showRoutesDialog by remember {
+        mutableStateOf(false)
+    }
+
     val placemarks = remember {
         mutableStateListOf<com.yandex.mapkit.map.PlacemarkMapObject>()
     }
 
+    val scope =
+        rememberCoroutineScope()
 
 
     val filteredPlaces = remember(
@@ -175,6 +188,7 @@ fun MapScreen(
     }
 
     val mapView = remember {
+
         MapView(context).apply {
             mapWindow.map.move(
                 CameraPosition(
@@ -186,6 +200,7 @@ fun MapScreen(
             )
             mapWindow.map.isNightModeEnabled = true
         }
+
     }
 
     val permissionLauncher = rememberLauncherForActivityResult(
@@ -225,10 +240,25 @@ fun MapScreen(
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(    Unit) {
         userLocation = getLastKnownLocation(context)
+        val routesResult =
+            repository.getRoutes()
+
+        routesResult.onSuccess {
+
+            routes = it
+        }
         val result = repository.getPoints()
 
+        result.onFailure {
+
+            android.util.Log.e(
+                "POINT_ERROR",
+                "ошибка=${it.message}",
+                it
+            )
+        }
         result.onSuccess { list ->
             places = list.mapNotNull { dto ->
                 val lat = dto.latitude
@@ -1249,6 +1279,31 @@ fun MapScreen(
 
                     }
 
+                    ExtendedFloatingActionButton(
+
+                        onClick = {
+
+                            showRoutesDialog = true
+                        },
+
+                        modifier =
+                            Modifier
+                                .align(
+                                    Alignment.BottomStart
+                                )
+                                .padding(16.dp),
+
+                        containerColor =
+                            Color(0xFF4CAF50)
+
+                    ) {
+
+                        Text(
+                            "🗺 Маршруты"
+                        )
+                    }
+
+
                     FloatingActionButton(
                         onClick = {
                             val granted = ContextCompat.checkSelfPermission(
@@ -1380,6 +1435,194 @@ fun MapScreen(
                                 }
                             }
                         }
+                    }
+
+                    if(showRoutesDialog){
+
+                        AlertDialog(
+
+                            onDismissRequest = {
+
+                                showRoutesDialog=false
+                            },
+
+                            title = {
+
+                                Text(
+                                    "Готовые маршруты"
+                                )
+                            },
+
+                            text = {
+
+                                Column{
+
+                                    routes.forEach { route ->
+
+                                        Card(
+
+                                            modifier =
+                                                Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(vertical=6.dp),
+
+                                            onClick = {
+
+                                                scope.launch {
+
+                                                    val detailResult =
+
+                                                        repository.getRouteDetail(
+                                                            route.id
+                                                        )
+
+                                                    detailResult.onSuccess { detail ->
+
+                                                        val loadedPlaces =
+
+                                                            detail.route_points.mapNotNull {
+
+                                                                val lat =
+                                                                    it.latitude
+                                                                        ?.toDoubleOrNull()
+
+                                                                val lon =
+                                                                    it.longitude
+                                                                        ?.toDoubleOrNull()
+
+                                                                if(
+                                                                    lat != null &&
+                                                                    lon != null
+                                                                ){
+
+                                                                    MapPlaceUi(
+
+                                                                        id =
+                                                                            it.point_id.toString(),
+
+                                                                        title =
+                                                                            it.name,
+
+                                                                        point =
+                                                                            Point(
+                                                                                lat,
+                                                                                lon
+                                                                            ),
+
+                                                                        hasAudio = true
+                                                                    )
+
+                                                                } else null
+                                                            }
+
+                                                        routePlaces =
+
+                                                            userLocation?.let { location ->
+
+                                                                loadedPlaces.sortedBy {
+
+                                                                    val result =
+                                                                        FloatArray(1)
+
+                                                                    android.location.Location.distanceBetween(
+
+                                                                        location.latitude,
+                                                                        location.longitude,
+
+                                                                        it.point.latitude,
+                                                                        it.point.longitude,
+
+                                                                        result
+                                                                    )
+
+                                                                    result[0]
+                                                                }
+
+                                                            } ?: loadedPlaces
+
+                                                        showRoutesDialog =
+                                                            false
+
+                                                        routeBuilt =
+                                                            false
+
+                                                        selectedPlace =
+                                                            null
+
+                                                        userLocation?.let { location ->
+
+                                                            buildMultiRoute(
+
+                                                                mapView = mapView,
+
+                                                                router = drivingRouter,
+
+                                                                userLocation = location,
+
+                                                                places = routePlaces,
+
+                                                                onInfoLoaded = { distance, time ->
+
+                                                                    routeDistance = distance
+                                                                    routeTime = time
+                                                                },
+
+                                                                routePolyline = routePolyline,
+
+                                                                onPolylineChanged = {
+
+                                                                    routePolyline = it
+                                                                }
+                                                            )
+
+                                                            routeBuilt = true
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        ) {
+
+                                            Column(
+
+                                                Modifier.padding(
+                                                    12.dp
+                                                )
+                                            ){
+
+                                                Text(
+                                                    route.name
+                                                )
+
+                                                Spacer(
+                                                    Modifier.height(4.dp)
+                                                )
+
+                                                Text(
+
+                                                    "${route.points_count} точек • " +
+                                                            "${route.duration_minutes} мин",
+
+                                                    color=Color.Gray
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            },
+
+                            confirmButton = {
+
+                                TextButton(
+                                    onClick = {
+
+                                        showRoutesDialog=false
+                                    }
+                                ){
+
+                                    Text("Закрыть")
+                                }
+                            }
+                        )
                     }
 
                     locationError?.let {
@@ -1599,12 +1842,24 @@ private fun buildMultiRoute(
         )
     )
 
-    places.forEach { place ->
+    places.forEachIndexed { index, place ->
 
         points.add(
+
             RequestPoint(
+
                 place.point,
-                RequestPointType.WAYPOINT,
+
+                if(
+                    index == places.lastIndex
+                )
+
+                    RequestPointType.WAYPOINT
+
+                else
+
+                    RequestPointType.VIAPOINT,
+
                 null,
                 null,
                 null

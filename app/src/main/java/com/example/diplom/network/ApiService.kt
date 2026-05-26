@@ -186,6 +186,40 @@ data class PhotoOfflineDto(
     val order: Int?
 )
 
+data class RoutePointDto(
+
+    val order:Int,
+
+    val point_id:Int,
+
+    val name:String,
+
+    val latitude:String?,
+
+    val longitude:String?,
+
+    val note:String?
+)
+
+data class RouteDetailDto(
+
+    val id:Int,
+
+    val name:String,
+
+    val description:String?,
+
+    val duration_minutes:Int?,
+
+    val difficulty_display:String?,
+
+    val avg_rating:Double?,
+
+    val points_count:Int?,
+
+    val route_points:List<RoutePointDto>
+)
+
 interface ApiService {
 
     @POST("api/auth/register/")
@@ -223,7 +257,14 @@ interface ApiService {
     suspend fun getCategories(): List<CategoryDto>
 
     @GET("api/points/")
-    suspend fun getPoints(): PagedResponse<PointListDto>
+    suspend fun getPoints(
+
+        @retrofit2.http.Query(
+            "page"
+        )
+        page:Int
+
+    ):PagedResponse<PointListDto>
 
     @GET("api/points/{id}/")
     suspend fun getPointDetail(
@@ -247,6 +288,18 @@ interface ApiService {
         id:Int
 
     ): OfflineRegionBundleDto
+
+    @GET("api/routes/")
+    suspend fun getRoutes():
+            PagedResponse<RouteDetailDto>
+
+    @GET("api/routes/{id}/")
+    suspend fun getRouteDetail(
+
+        @Path("id")
+        id:Int
+
+    ): RouteDetailDto
 
 
 }
