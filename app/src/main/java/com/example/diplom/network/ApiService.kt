@@ -4,6 +4,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import com.google.gson.annotations.SerializedName
 
 
 data class RegisterRequest(
@@ -74,10 +75,18 @@ data class PhotoDto(
 )
 
 data class AudioGuideDto(
-    val id: Int,
-    val audio_file: String?,
-    val duration_seconds: Int?,
-    val language: String?
+
+    val id:Int,
+
+    @SerializedName(
+        value = "audio_file",
+        alternate = ["url"]
+    )
+    val audio_file:String?,
+
+    val duration_seconds:Int?,
+
+    val language:String?
 )
 
 data class PointListDto(

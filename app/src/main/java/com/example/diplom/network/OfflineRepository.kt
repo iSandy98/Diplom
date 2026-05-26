@@ -6,6 +6,7 @@ import com.example.diplom.database.OfflinePlaceEntity
 import com.example.diplom.database.OfflineStoryEntity
 import java.io.File
 import com.example.diplom.database.OfflineRegionEntity
+import com.example.diplom.database.OfflineAudioEntity
 
 class OfflineRepository(
     context: Context
@@ -18,6 +19,9 @@ class OfflineRepository(
     private val dao =
         database
             .offlinePlaceDao()
+
+    private val imageDownloader =
+        ImageDownloader(context)
 
     private val storyDao =
         database.offlineStoryDao()
@@ -302,20 +306,42 @@ class OfflineRepository(
         if(audio==null)
             return
 
+        val localAudio =
+
+            audio.audio_file?.let {
+
+                imageDownloader
+                    .downloadImage(
+
+                        url =
+                            if(
+                                it.startsWith("http")
+                            )
+
+                                it
+
+                            else
+
+                                "https://yave4en.pythonanywhere.com$it",
+
+                        fileName =
+                            "audio_${pointId}.mp3"
+                    )
+            }
+
         audioDao.saveAudio(
 
-            com.example.diplom.database
-                .OfflineAudioEntity(
+            OfflineAudioEntity(
 
-                    pointId =
-                        pointId,
+                pointId =
+                    pointId,
 
-                    audioUrl =
-                        audio.audio_file,
+                audioUrl =
+                    localAudio,
 
-                    duration =
-                        audio.duration_seconds
-                )
+                duration =
+                    audio.duration_seconds
+            )
         )
     }
 

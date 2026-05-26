@@ -186,6 +186,11 @@ fun PlaceDetailScreen(
                         offlinePlace.id
                     )
 
+                android.util.Log.d(
+                    "OFFLINE_AUDIO",
+                    "audio=${offlineAudio?.audioUrl}"
+                )
+
                 place =
                     PointDetailDto(
 
@@ -372,12 +377,35 @@ fun PlaceDetailScreen(
 
                             Button(
                                 onClick = {
+                                    val audio =
+
+                                        currentPlace
+                                            .audio_guide
+                                            ?.audio_file
+
                                     val audioUrl =
-                                        buildMediaUrl(
-                                            currentPlace.audio_guide?.audio_file
-                                        )
+
+                                        if(
+                                            audio?.startsWith(
+                                                "/data/"
+                                            ) == true
+                                        ){
+
+                                            "file://$audio"
+
+                                        } else {
+
+                                            buildMediaUrl(
+                                                audio
+                                            )
+                                        }
 
                                     playerError = null
+
+                                    android.util.Log.d(
+                                        "OFFLINE_AUDIO",
+                                        "play=$audioUrl"
+                                    )
 
                                     if (!audioUrl.isNullOrBlank()) {
 

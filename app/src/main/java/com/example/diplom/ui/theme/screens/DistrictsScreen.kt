@@ -603,6 +603,11 @@ fun DistrictsScreen(
 
                                         bundle.points.forEach { point ->
 
+                                            android.util.Log.d(
+                                                "AUDIO_TEST",
+                                                "point=${point.name} audio=${point.audio?.audio_file}"
+                                            )
+
                                             offlineRepository.savePhotos(
                                                 pointId = point.id,
                                                 photos = point.photos.map { photo ->
