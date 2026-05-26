@@ -58,6 +58,12 @@ import androidx.compose.material.icons.filled.Close
 import com.example.diplom.network.OfflineRepository
 import com.example.diplom.network.RouteDetailDto
 import kotlinx.coroutines.launch
+import android.location.LocationListener
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
+import androidx.compose.ui.platform.LocalLifecycleOwner
 
 data class MapPlaceUi(
     val id: String,
@@ -89,6 +95,11 @@ fun MapScreen(
     var searchText by remember {
         mutableStateOf("")
     }
+
+    var userBearing by remember {
+        mutableFloatStateOf(0f)
+    }
+
     var routePlaces by remember {
         mutableStateOf<List<MapPlaceUi>>(emptyList())
     }
@@ -145,6 +156,21 @@ fun MapScreen(
         mutableStateOf<PointDetailDto?>(null)
     }
 
+    val locationManager = remember {
+
+        context.getSystemService(
+            Context.LOCATION_SERVICE
+        ) as LocationManager
+    }
+
+    val listener = remember {
+
+        LocationListener { location ->
+
+            userLocation = location
+        }
+    }
+
     var audioStarted by remember {
         mutableStateOf(setOf<String>())
     }
@@ -187,6 +213,20 @@ fun MapScreen(
         }
     }
 
+    val sensorManager = remember {
+
+        context.getSystemService(
+            Context.SENSOR_SERVICE
+        ) as SensorManager
+    }
+
+    val rotationSensor = remember {
+
+        sensorManager.getDefaultSensor(
+            Sensor.TYPE_ROTATION_VECTOR
+        )
+    }
+
     val mapView = remember {
 
         MapView(context).apply {
@@ -222,6 +262,20 @@ fun MapScreen(
         }
     }
 
+    DisposableEffect(Unit) {
+
+        onDispose {
+
+            try {
+
+                locationManager.removeUpdates(
+                    listener
+                )
+
+            } catch(_:Exception){}
+        }
+    }
+
     DisposableEffect(mapView) {
         mapView.onStart()
         MapKitFactory.getInstance().onStart()
@@ -232,15 +286,111 @@ fun MapScreen(
         }
     }
 
-    DisposableEffect(Unit) {
+        DisposableEffect(rotationSensor) {
 
-        onDispose {
+            val listener =
+
+                object : SensorEventListener {
+
+                    override fun onSensorChanged(
+                        event: SensorEvent
+                    ) {
+
+                        val rotationMatrix =
+                            FloatArray(9)
+
+                        SensorManager.getRotationMatrixFromVector(
+
+                            rotationMatrix,
+
+                            event.values
+                        )
+
+                        val orientation =
+                            FloatArray(3)
+
+                        SensorManager.getOrientation(
+
+                            rotationMatrix,
+
+                            orientation
+                        )
+
+                        userBearing =
+
+                            Math.toDegrees(
+
+                                orientation[0].toDouble()
+
+                            ).toFloat()
+                    }
+
+                    override fun onAccuracyChanged(
+                        sensor: Sensor?,
+                        accuracy: Int
+                    ) {}
+                }
+
+            rotationSensor?.let {
+
+                sensorManager.registerListener(
+
+                    listener,
+
+                    it,
+
+                    SensorManager.SENSOR_DELAY_UI
+                )
+            }
+
+            onDispose {
+
+                sensorManager.unregisterListener(
+                    listener
+                )
+            }
+    }
+
+    DisposableEffect(Unit){
+
+        onDispose{
 
             exoPlayer.release()
         }
     }
 
     LaunchedEffect(    Unit) {
+
+        val granted =
+
+            ContextCompat.checkSelfPermission(
+
+                context,
+
+                Manifest.permission.ACCESS_FINE_LOCATION
+
+            ) == PackageManager.PERMISSION_GRANTED
+
+
+        if(granted){
+
+            try {
+
+                locationManager.requestLocationUpdates(
+
+                    LocationManager.GPS_PROVIDER,
+
+                    1000,
+
+                    1f,
+
+                    listener
+
+                )
+
+            } catch(_:SecurityException){}
+        }
+
         userLocation = getLastKnownLocation(context)
         val routesResult =
             repository.getRoutes()
@@ -349,6 +499,8 @@ fun MapScreen(
             }
 
         isLoading = false
+
+
     }
 
     val markerBitmap = remember { createMarkerBitmap() }
@@ -906,6 +1058,9 @@ fun MapScreen(
                             userPlacemark =
                                 map.mapObjects.addPlacemark().apply {
 
+                                    direction =
+                                        userBearing
+
                                     zIndex = 200f
 
                                     geometry =
@@ -922,6 +1077,10 @@ fun MapScreen(
                                                 PointF(0.5f,0.5f)
 
                                             scale = 1f
+
+                                            rotationType =
+
+                                                com.yandex.mapkit.map.RotationType.ROTATE
                                         }
                                     )
                                 }
@@ -1992,6 +2151,37 @@ private fun createUserMarkerBitmap(): Bitmap {
 
     canvas.drawCircle(width / 2f, height / 2f, 24f, outerPaint)
     canvas.drawCircle(width / 2f, height / 2f, 16f, innerPaint)
+    val arrowPaint =
+        Paint(Paint.ANTI_ALIAS_FLAG).apply {
+
+            color =
+                AndroidColor.WHITE
+        }
+
+    val path =
+        android.graphics.Path()
+
+    path.moveTo(
+        width/2f,
+        6f
+    )
+
+    path.lineTo(
+        width/2f-8,
+        22f
+    )
+
+    path.lineTo(
+        width/2f+8,
+        22f
+    )
+
+    path.close()
+
+    canvas.drawPath(
+        path,
+        arrowPaint
+    )
 
     return bitmap
 }
