@@ -124,6 +124,14 @@ fun DistrictsScreen(
 
                 regions = it
 
+                it.forEach {
+
+                    android.util.Log.d(
+                        "REGION_TEST",
+                        "id=${it.id} name=${it.name}"
+                    )
+                }
+
                 scope.launch {
 
                     offlineRepository
@@ -470,43 +478,6 @@ fun DistrictsScreen(
                                 downloadProgress = 0f
 
                                 scope.launch {
-                                /*
-                                    val pointsResult =
-                                        pointsRepository
-                                            .getPoints()
-
-                                    val districtPlaces =
-                                        pointsResult
-                                            .getOrDefault(
-                                                emptyList()
-                                            )
-                                            .filter {
-
-                                                it.region_name
-                                                    ?.trim()
-                                                    ?.contains(
-                                                        region.name.trim(),
-                                                        ignoreCase = true
-                                                    ) == true
-                                            }
-                                    android.util.Log.d(
-                                        "OFFLINE_TEST",
-                                        "Район=${region.name}"
-                                    )
-
-                                    districtPlaces.forEach {
-
-                                        android.util.Log.d(
-                                            "OFFLINE_TEST",
-                                            "Точка=${it.name} | ${it.region_name}"
-                                        )
-                                    }
-
-                                    android.util.Log.d(
-                                        "OFFLINE_TEST",
-                                        "Количество=${districtPlaces.size}"
-                                    )
-                            */
                                     val result =
 
                                         offlineBundleRepository
@@ -532,6 +503,12 @@ fun DistrictsScreen(
                                             bundle.region.name,
                                             bundle.stories
                                         )
+
+                                        bundle.routes.forEach {
+
+                                            offlineRepository
+                                                .saveRoute(it)
+                                        }
 
                                         offlineRepository.saveRegionPlaces(
                                             bundle.region.name,

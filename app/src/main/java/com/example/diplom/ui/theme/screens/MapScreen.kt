@@ -64,6 +64,7 @@ import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import com.example.diplom.network.RoutePointDto
 
 data class MapPlaceUi(
     val id: String,
@@ -392,13 +393,79 @@ fun MapScreen(
         }
 
         userLocation = getLastKnownLocation(context)
+
+
         val routesResult =
             repository.getRoutes()
 
         routesResult.onSuccess {
 
             routes = it
+
+        }.onFailure {
+
+            val offlineRoutes =
+                offlineRepository.getRoutes()
+
+            routes = offlineRoutes.map { route ->
+
+                val points =
+
+                    offlineRepository
+                        .getRoutePoints(
+                            route.id
+                        )
+
+                RouteDetailDto(
+
+                    id =
+                        route.id,
+
+                    name =
+                        route.name,
+
+                    description =
+                        route.description,
+
+                    duration_minutes =
+                        route.duration,
+
+                    route_points =
+
+                        points.map {
+
+                            RoutePointDto(
+
+                                order =
+                                    it.order,
+
+                                point_id =
+                                    it.pointId,
+
+                                name =
+                                    it.name ?: "Без названия",
+
+                                latitude =
+                                    it.latitude.toString(),
+
+                                longitude =
+                                    it.longitude.toString(),
+
+                                note = ""
+                            )
+                        },
+
+                    points_count =
+                        points.size,
+
+                    avg_rating = 0.0,
+
+                    difficulty_display =
+                        "Лёгкий"
+                )
+            }
         }
+
         val result = repository.getPoints()
 
         result.onFailure {
@@ -1186,6 +1253,62 @@ fun MapScreen(
 
                                     audioStarted =
                                         audioStarted + currentPlace.id
+
+                                    exoPlayer.addListener(
+
+                                        object : androidx.media3.common.Player.Listener {
+
+                                            override fun onPlaybackStateChanged(
+                                                state: Int
+                                            ) {
+
+                                                if(
+                                                    state ==
+                                                    androidx.media3.common.Player.STATE_ENDED
+                                                ){
+
+                                                    if(
+                                                        currentPointIndex <
+                                                        routePlaces.lastIndex
+                                                    ){
+
+                                                        currentPointIndex++
+
+                                                        routePlaces
+                                                            .getOrNull(
+                                                                currentPointIndex
+                                                            )
+                                                            ?.let { nextPoint ->
+
+                                                                mapView
+                                                                    .mapWindow
+                                                                    .map
+                                                                    .move(
+
+                                                                        CameraPosition(
+
+                                                                            nextPoint.point,
+
+                                                                            15f,
+
+                                                                            0f,
+
+                                                                            0f
+                                                                        )
+                                                                    )
+                                                            }
+
+                                                    } else {
+
+                                                        tourStarted = false
+
+                                                        currentAudioPlace =
+                                                            null
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    )
                                 }
                             }
 

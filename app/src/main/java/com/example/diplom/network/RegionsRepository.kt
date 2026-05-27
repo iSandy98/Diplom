@@ -8,8 +8,34 @@ class RegionsRepository(
     private val api = RetrofitInstance.create(context)
 
     suspend fun getRegions(): Result<List<RegionDto>> {
+
         return runCatching {
-            api.getRegions().results
+
+            val allRegions =
+                mutableListOf<RegionDto>()
+
+            var page = 1
+
+            while(true){
+
+                val response =
+
+                    api.getRegions(
+                        page
+                    )
+
+                allRegions.addAll(
+                    response.results
+                )
+
+                if(
+                    response.next == null
+                ) break
+
+                page++
+            }
+
+            allRegions
         }
     }
 

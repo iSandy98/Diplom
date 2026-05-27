@@ -4,6 +4,7 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 import com.google.gson.annotations.SerializedName
 
 
@@ -149,7 +150,7 @@ data class OfflineRegionBundleDto(
 
     val points: List<PointOfflineDto>,
 
-    val routes: List<Any>,
+    val routes: List<RouteDetailDto>,
 
     val stories: List<StoryDto>
 )
@@ -246,7 +247,10 @@ interface ApiService {
     suspend fun getProfile(): ProfileDto
 
     @GET("api/regions/")
-    suspend fun getRegions(): PagedResponse<RegionDto>
+    suspend fun getRegions(
+        @Query("page")
+        page:Int
+    ): PagedResponse<RegionDto>
 
     @GET("api/regions/{id}/")
     suspend fun getRegionDetail(

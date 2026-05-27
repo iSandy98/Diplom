@@ -7,6 +7,8 @@ import com.example.diplom.database.OfflineStoryEntity
 import java.io.File
 import com.example.diplom.database.OfflineRegionEntity
 import com.example.diplom.database.OfflineAudioEntity
+import com.example.diplom.database.RouteEntity
+import com.example.diplom.database.RoutePointEntity
 
 class OfflineRepository(
     context: Context
@@ -34,6 +36,76 @@ class OfflineRepository(
     private val regionDao =
         database
             .offlineRegionDao()
+
+    private val routeDao =
+        database.routeDao()
+
+    suspend fun getRoutes() =
+        routeDao.getRoutes()
+
+    suspend fun getRoutePoints(
+        routeId:Int
+    )=
+        routeDao.getRoutePoints(
+            routeId
+        )
+
+    suspend fun saveRoute(
+        route: RouteDetailDto
+    ){
+
+        routeDao.saveRoute(
+
+            RouteEntity(
+
+                id =
+                    route.id,
+
+                name =
+                    route.name,
+
+                description =
+                    route.description,
+
+                duration =
+                    route.duration_minutes
+            )
+        )
+
+        android.util.Log.d(
+            "OFFLINE_ROUTE",
+            "сохранили маршрут: ${route.name}"
+        )
+
+        routeDao.saveRoutePoints(
+
+            route.route_points.map {
+
+                RoutePointEntity(
+
+                    routeId =
+                        route.id,
+
+                    pointId =
+                        it.point_id,
+
+                    name =
+                        it.name ?: "Без названия",
+
+                    latitude =
+                        it.latitude?.toDoubleOrNull()
+                            ?:0.0,
+
+                    longitude =
+                        it.longitude?.toDoubleOrNull()
+                            ?:0.0,
+
+                    order =
+                        it.order
+                )
+            }
+        )
+    }
 
     suspend fun saveRegionPlaces(
         regionName: String,

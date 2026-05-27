@@ -15,15 +15,23 @@ import androidx.room.RoomDatabase
 
         OfflinePhotoEntity::class,
 
-        OfflineAudioEntity::class
+        OfflineAudioEntity::class,
+
+        RouteEntity::class,
+
+        RoutePointEntity::class
+
 
     ],
 
-    version = 7
+    version = 10
 )
 
 abstract class AppDatabase :
     RoomDatabase() {
+
+    abstract fun routeDao():
+            RouteDao
 
     abstract fun
             offlinePlaceDao():
