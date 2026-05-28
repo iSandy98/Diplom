@@ -668,6 +668,39 @@ fun DistrictsScreen(
                                         downloadedIds =
                                             downloadedIds + region.id
 
+                                        downloadedRegions =
+
+                                            offlineRepository
+                                                .getDownloadedRegions()
+
+                                                .map {
+
+                                                    RegionDto(
+
+                                                        id = it.id,
+
+                                                        name = it.name,
+
+                                                        description =
+                                                            it.description,
+
+                                                        image =
+                                                            it.image,
+
+                                                        points_count =
+                                                            null
+                                                    )
+                                                }
+
+                                        regions = regions.map {
+
+                                            if(it.id == region.id){
+
+                                                it.copy()
+
+                                            } else it
+                                        }
+
                                         val size: Float =
 
                                             offlineRepository
