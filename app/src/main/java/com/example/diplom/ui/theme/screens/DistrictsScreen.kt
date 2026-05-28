@@ -487,9 +487,32 @@ fun DistrictsScreen(
 
                                     result.onSuccess { bundle ->
 
+                                        val localRegionImage =
+
+                                            bundle.region.image?.let {
+
+                                                imageDownloader
+                                                    .downloadImage(
+
+                                                        url =
+                                                            buildImageUrl(it)
+                                                                ?: "",
+
+                                                        fileName =
+                                                            "region_${bundle.region.id}.jpg"
+                                                    )
+                                            }
 
                                         offlineRepository.saveRegions(
-                                            listOf(bundle.region)
+
+                                            listOf(
+
+                                                bundle.region.copy(
+
+                                                    image =
+                                                        localRegionImage
+                                                )
+                                            )
                                         )
 
                                         database

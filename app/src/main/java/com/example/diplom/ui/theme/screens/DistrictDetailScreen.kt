@@ -83,6 +83,14 @@ fun DistrictDetailScreen(
     LaunchedEffect(districtId) {
         isLoading = true
 
+        district = null
+
+        stories = emptyList()
+
+        places = emptyList()
+
+        otherDistricts = emptyList()
+
         val id = districtId.toIntOrNull()
         val offlineRegions =
             offlineRepository
@@ -122,13 +130,58 @@ fun DistrictDetailScreen(
                                 districtName
                             )
 
+                    val offlineStories =
+
+                        offlineRepository
+                            .getStories(
+                                districtName
+                            )
+
+                    stories =
+
+                        offlineStories
+                            .take(5)
+                            .map {
+
+                                StoryUi(
+
+                                    id =
+                                        it.id.toString(),
+
+                                    title =
+                                        it.title,
+
+                                    subtitle =
+                                        it.description ?: "",
+
+                                    imageUrl =
+
+                                        if(
+                                            it.image
+                                                ?.startsWith("/data/")
+                                            == true
+                                        )
+
+                                            "file://${it.image}"
+
+                                        else
+
+                                            buildImageUrl(
+                                                it.image
+                                            )
+                                )
+                            }
+
                     android.util.Log.d(
                         "OFFLINE_CHECK",
                         "Нашли=${offlinePlaces.size}"
                     )
 
                     places =
-                        offlinePlaces.map {
+                        offlinePlaces
+                            .shuffled()
+                            .take(6)
+                            .map {
 
                             PlaceUi(
                                 id = it.id.toString(),
@@ -140,9 +193,20 @@ fun DistrictDetailScreen(
                                     it.regionName ?: "",
 
                                 imageUrl =
-                                    buildImageUrl(
+
+                                    if(
                                         it.coverPhoto
-                                    ),
+                                            ?.startsWith("/data/")
+                                        == true
+                                    )
+
+                                        "file://${it.coverPhoto}"
+
+                                    else
+
+                                        buildImageUrl(
+                                            it.coverPhoto
+                                        ),
 
                                 latitude =
                                     it.latitude,
@@ -165,6 +229,40 @@ fun DistrictDetailScreen(
                             image = null,
                             points_count = null
                         )
+
+                    otherDistricts =
+
+                        offlineRegions
+                            .filter {
+                                it.id != id
+                            }
+                            .map {
+
+                                DistrictUi(
+
+                                    id =
+                                        it.id.toString(),
+
+                                    title =
+                                        it.name,
+
+                                    imageUrl =
+
+                                        if(
+                                            it.image
+                                                ?.startsWith("/data/")
+                                            == true
+                                        )
+
+                                            "file://${it.image}"
+
+                                        else
+
+                                            buildImageUrl(
+                                                it.image
+                                            )
+                                )
+                            }
 
                     isLoading = false
 
