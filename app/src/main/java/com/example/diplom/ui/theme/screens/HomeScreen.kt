@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -106,15 +107,69 @@ fun HomeScreen(
     var isPlacesLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(currentRegion) {
-        val regionsResult = regionsRepository.getRegions()
-        districts = regionsResult.getOrDefault(emptyList())
-            .take(5)
-            .map {
-                DistrictUi(
-                    id = it.id.toString(),
-                    title = it.name,
-                    imageUrl = buildImageUrl(it.image)
-                )
+        val regionsResult =
+            regionsRepository.getRegions()
+
+        regionsResult
+            .onSuccess { data ->
+
+                districts =
+                    data
+                        .take(5)
+                        .map {
+
+                            DistrictUi(
+
+                                id =
+                                    it.id.toString(),
+
+                                title =
+                                    it.name,
+
+                                imageUrl =
+                                    buildImageUrl(
+                                        it.image
+                                    )
+                            )
+                        }
+            }
+
+            .onFailure {
+
+                val offlineRegions =
+
+                    offlineRepository
+                        .getDownloadedRegions()
+
+                districts =
+                    offlineRegions
+                        .map {
+
+                            DistrictUi(
+
+                                id =
+                                    it.id.toString(),
+
+                                title =
+                                    it.name,
+
+                                imageUrl =
+
+                                    if(
+                                        it.image
+                                            ?.startsWith("/data/")
+                                        == true
+                                    )
+
+                                        "file://${it.image}"
+
+                                    else
+
+                                        buildImageUrl(
+                                            it.image
+                                        )
+                            )
+                        }
             }
         isDistrictsLoading = false
 
@@ -615,7 +670,7 @@ fun PlaceItem(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(120.dp)
+            .heightIn(120.dp)
             .clickable { onClick() },
         verticalAlignment = Alignment.Top
     ) {
@@ -646,6 +701,8 @@ fun PlaceItem(
         ) {
             Text(
                 text = item.title,
+                maxLines = 4,
+                overflow = TextOverflow.Ellipsis,
                 style = TextStyle(
                     fontSize = 14.sp,
                     lineHeight = 20.sp,
@@ -691,19 +748,6 @@ fun PlaceItem(
                     modifier = Modifier.weight(1f)
                 )
             }
-        }
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        IconButton(
-            onClick = onPlayClick,
-            modifier = Modifier.size(24.dp)
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.PlayArrow,
-                contentDescription = "Воспроизвести",
-                tint = Color(0xFF1F1F1F)
-            )
         }
     }
 }
