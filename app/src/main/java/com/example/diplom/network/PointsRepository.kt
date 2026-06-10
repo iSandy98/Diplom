@@ -88,4 +88,23 @@ class PointsRepository(
             api.getRouteDetail(id)
         }
     }
+
+    suspend fun getReviews(pointId: Int): Result<List<ReviewDto>> {
+        return runCatching {
+            api.getReviews(pointId).results
+        }
+    }
+
+    suspend fun addReview(
+        pointId: Int,
+        score: Int,
+        text: String
+    ): Result<Unit> {
+        return runCatching {
+            val response = api.addReview(ReviewRequest(point = pointId, rating = score, comment = text))
+            if (!response.isSuccessful) {
+                error("HTTP ${response.code()}")
+            }
+        }
+    }
 }

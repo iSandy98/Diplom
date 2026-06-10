@@ -51,7 +51,8 @@ class OfflineRepository(
         )
 
     suspend fun saveRoute(
-        route: RouteDetailDto
+        route: RouteDetailDto,
+        regionName: String = ""
     ){
 
         routeDao.saveRoute(
@@ -68,7 +69,10 @@ class OfflineRepository(
                     route.description,
 
                 duration =
-                    route.duration_minutes
+                    route.duration_minutes,
+
+                regionName =
+                    regionName
             )
         )
 
@@ -214,6 +218,15 @@ class OfflineRepository(
             )
         }
 
+        val routes =
+            routeDao.getRoutesByRegion(regionName)
+
+        routes.forEach { route ->
+            routeDao.deleteRoutePoints(route.id)
+        }
+
+        routeDao.deleteRoutesByRegion(regionName)
+
         storyDao.deleteStories(
             regionName
         )
@@ -281,15 +294,27 @@ class OfflineRepository(
 
     suspend fun saveStories(
 
-        regionName:String,
+        regionName: String,
 
-        stories: List<StoryDto>
+        stories: List<StoryDto>,
+
+        downloadImages: Boolean = true
 
     ){
 
         storyDao.saveStories(
 
             stories.map {
+
+                val localImage = if (downloadImages) {
+                    it.image?.let { url ->
+                        imageDownloader.downloadImage(
+                            url = if (url.startsWith("http")) url
+                                  else "https://yave4en.pythonanywhere.com$url",
+                            fileName = "story_${it.id}.jpg"
+                        )
+                    }
+                } else null
 
                 OfflineStoryEntity(
 
@@ -303,7 +328,7 @@ class OfflineRepository(
                         it.description,
 
                     image =
-                        it.image,
+                        localImage ?: it.image,
 
                     regionName =
                         regionName,

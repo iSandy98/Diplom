@@ -33,7 +33,6 @@ import com.example.diplom.utils.buildImageUrl
 import com.example.diplom.network.OfflineRegionRepository
 import com.example.diplom.network.ImageDownloader
 import com.example.diplom.database.DatabaseProvider
-import com.example.diplom.database.OfflineStoryEntity
 
 private const val API_DOMAIN =
     "https://yave4en.pythonanywhere.com"
@@ -114,147 +113,83 @@ fun DistrictsScreen(
 
     LaunchedEffect(Unit) {
 
-        try {
+        val result =
+            repository
+                .getRegions()
 
-            val result =
-                repository
-                    .getRegions()
+        result.onSuccess { regionList ->
 
-            result.onSuccess {
+            regions = regionList
 
-                regions = it
-
-                it.forEach {
-
-                    android.util.Log.d(
-                        "REGION_TEST",
-                        "id=${it.id} name=${it.name}"
-                    )
-                }
-
-                scope.launch {
-
-                    offlineRepository
-                        .saveRegions(it)
-
-                    downloadedIds =
-
-                        offlineRepository
-                            .getDownloadedIds()
-
-                    downloadedRegions =
-
-                        offlineRepository
-                            .getDownloadedRegions()
-
-                            .map {
-
-                                RegionDto(
-
-                                    id = it.id,
-
-                                    name = it.name,
-
-                                    description =
-                                        it.description,
-
-                                    image =
-                                        it.image,
-
-                                    points_count =
-                                        null
-                                )
-                            }
-
-                    val sizes = mutableMapOf<Int, Float>()
-
-                    downloadedIds.forEach { id ->
-
-                        val region =
-
-                            regions.firstOrNull {
-                                it.id == id
-                            }
-
-                        if(region != null){
-
-                            sizes[id] =
-
-                                offlineRepository
-                                    .getRegionSize(
-                                        region.name
-                                    )
-                        }
-                    }
-
-                    regionSizes = sizes
-                }
+            regionList.forEach {
+                android.util.Log.d(
+                    "REGION_TEST",
+                    "id=${it.id} name=${it.name}"
+                )
             }
 
-        } catch(
-            e: Exception
-        ){
+            scope.launch {
+
+                offlineRepository
+                    .saveRegions(regionList)
+
+                downloadedIds =
+                    offlineRepository
+                        .getDownloadedIds()
+
+                downloadedRegions =
+                    offlineRepository
+                        .getDownloadedRegions()
+                        .map {
+                            RegionDto(
+                                id = it.id,
+                                name = it.name,
+                                description = it.description,
+                                image = it.image,
+                                points_count = null
+                            )
+                        }
+
+                val sizes = mutableMapOf<Int, Float>()
+                downloadedIds.forEach { id ->
+                    val region = regionList.firstOrNull { it.id == id }
+                    if (region != null) {
+                        sizes[id] = offlineRepository.getRegionSize(region.name)
+                    }
+                }
+                regionSizes = sizes
+            }
+
+        }.onFailure {
 
             downloadedIds =
-
                 offlineRepository
                     .getDownloadedIds()
 
             val offlineRegions =
-
                 offlineRepository
                     .getRegions()
-
-                    .filter {
-
-                        downloadedIds
-                            .contains(
-                                it.id
-                            )
-                    }
+                    .filter { downloadedIds.contains(it.id) }
 
             downloadedRegions =
-
                 offlineRegions.map {
-
                     RegionDto(
-
                         id = it.id,
-
                         name = it.name,
-
-                        description =
-                            it.description,
-
-                        image =
-                            it.image,
-
-                        points_count =
-                            null
+                        description = it.description,
+                        image = it.image,
+                        points_count = null
                     )
                 }
 
-            regions =
-                downloadedRegions
+            regions = downloadedRegions
 
-            val sizes =
-                mutableMapOf<Int,Float>()
-
-            downloadedRegions
-                .forEach { region ->
-
-                    sizes[region.id] =
-
-                        offlineRepository
-                            .getRegionSize(
-                                region.name
-                            )
-                }
-
-            regionSizes =
-                sizes
-
-            errorText = null
+            val sizes = mutableMapOf<Int, Float>()
+            downloadedRegions.forEach { region ->
+                sizes[region.id] =
+                    offlineRepository.getRegionSize(region.name)
+            }
+            regionSizes = sizes
         }
 
         isLoading = false
@@ -530,7 +465,10 @@ fun DistrictsScreen(
                                         bundle.routes.forEach {
 
                                             offlineRepository
-                                                .saveRoute(it)
+                                                .saveRoute(
+                                                    it,
+                                                    bundle.region.name
+                                                )
                                         }
 
                                         offlineRepository.saveRegionPlaces(
@@ -644,32 +582,6 @@ fun DistrictsScreen(
                                                     )
                                                 }
                                             )
-
-                                            database
-                                                .offlineStoryDao()
-                                                .saveStories(
-
-                                                    bundle.stories.map {
-
-                                                        OfflineStoryEntity(
-
-                                                            id = it.id,
-
-                                                            title = it.title,
-
-                                                            description = it.description,
-
-                                                            image = it.image,
-
-                                                            regionName =
-                                                                bundle.region.name,
-
-                                                            createdAt =
-                                                                it.created_at
-                                                        )
-                                                    }
-                                                )
-
 
                                             offlineRepository.saveAudio(
                                                 pointId = point.id,

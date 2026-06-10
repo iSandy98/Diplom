@@ -30,7 +30,9 @@ import coil.compose.AsyncImage
 import com.example.diplom.network.PointDetailDto
 import com.example.diplom.network.RegionDto
 import com.example.diplom.network.PointsRepository
+import com.example.diplom.network.ReviewDto
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -71,6 +73,15 @@ fun PlaceDetailScreen(
     var reviewText by remember {
         mutableStateOf("")
     }
+
+    var reviewSent by remember { mutableStateOf(false) }
+    var reviewError by remember { mutableStateOf<String?>(null) }
+    var isSubmitting by remember { mutableStateOf(false) }
+    val reviewScope = rememberCoroutineScope()
+
+    var reviews by remember { mutableStateOf<List<ReviewDto>>(emptyList()) }
+    var isReviewsLoading by remember { mutableStateOf(false) }
+    var reviewVersion by remember { mutableIntStateOf(0) }
 
     var place by remember { mutableStateOf<PointDetailDto?>(null) }
     var isLoading by remember { mutableStateOf(true) }
@@ -258,6 +269,16 @@ fun PlaceDetailScreen(
         }
 
         isLoading = false
+    }
+
+    val placeIdInt = placeId.toIntOrNull()
+    LaunchedEffect(placeIdInt, reviewVersion) {
+        if (placeIdInt == null) return@LaunchedEffect
+        isReviewsLoading = true
+        repository.getReviews(placeIdInt)
+            .onSuccess { reviews = it }
+            .onFailure { reviews = emptyList() }
+        isReviewsLoading = false
     }
 
     val photos = place?.photos.orEmpty()
@@ -704,21 +725,58 @@ fun PlaceDetailScreen(
                         )
 
                         Button(
-
                             onClick = {
-
-                                // API позже
+                                if (selectedStars == 0) return@Button
+                                isSubmitting = true
+                                reviewError = null
+                                reviewSent = false
+                                reviewScope.launch {
+                                    repository.addReview(
+                                        currentPlace.id,
+                                        selectedStars,
+                                        reviewText
+                                    ).onSuccess {
+                                        reviewSent = true
+                                        selectedStars = 0
+                                        reviewText = ""
+                                        reviewVersion++
+                                    }.onFailure { e ->
+                                        reviewError = e.message ?: "Не удалось отправить отзыв"
+                                    }
+                                    isSubmitting = false
+                                }
                             },
-
-                            modifier =
-                                Modifier.padding(
-                                    horizontal = 16.dp
-                                )
-
+                            enabled = selectedStars > 0 && !isSubmitting,
+                            modifier = Modifier.padding(horizontal = 16.dp)
                         ) {
+                            if (isSubmitting) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp,
+                                    color = Color.White
+                                )
+                            } else {
+                                Text("Отправить")
+                            }
+                        }
 
+                        if (reviewSent) {
+                            Spacer(Modifier.height(8.dp))
                             Text(
-                                "Отправить"
+                                text = "Спасибо за ваш отзыв!",
+                                color = Color(0xFF4CAF50),
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                                fontSize = 14.sp
+                            )
+                        }
+
+                        if (reviewError != null) {
+                            Spacer(Modifier.height(8.dp))
+                            Text(
+                                text = reviewError ?: "",
+                                color = Color.Red,
+                                modifier = Modifier.padding(horizontal = 16.dp),
+                                fontSize = 13.sp
                             )
                         }
 
@@ -791,9 +849,38 @@ fun PlaceDetailScreen(
                         }
                     }
 
-                    Spacer(
-                        Modifier.height(24.dp)
-                    )
+                    Spacer(Modifier.height(24.dp))
+
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 16.dp))
+
+                    Spacer(Modifier.height(16.dp))
+
+                    if (isReviewsLoading) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    } else if (reviews.isEmpty()) {
+                        Text(
+                            text = "Отзывов пока нет. Будьте первым!",
+                            color = Color.Gray,
+                            fontSize = 14.sp,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                    } else {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            reviews.forEach { review ->
+                                ReviewItem(review = review)
+                            }
+                        }
+                    }
 
                     Spacer(Modifier.height(24.dp))
                 }
@@ -959,6 +1046,62 @@ fun PlaceDetailScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ReviewItem(review: ReviewDto) {
+    val initial = review.user_name?.firstOrNull()?.uppercaseChar()?.toString() ?: "?"
+    Column {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(Color(0xFFE49A68), androidx.compose.foundation.shape.CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = initial, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+
+            Spacer(Modifier.width(10.dp))
+
+            Column {
+                Text(
+                    text = review.user_name ?: "Пользователь",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color(0xFF1F1F1F)
+                )
+
+                Row {
+                    repeat(5) { index ->
+                        Icon(
+                            imageVector = if (index < review.rating) Icons.Default.Star else Icons.Outlined.StarBorder,
+                            contentDescription = null,
+                            tint = Color(0xFFFFC107),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = formatDate(review.created_at),
+                        fontSize = 12.sp,
+                        color = Color.Gray
+                    )
+                }
+            }
+        }
+
+        if (!review.comment.isNullOrBlank()) {
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = review.comment,
+                fontSize = 14.sp,
+                color = Color(0xFF1F1F1F),
+                lineHeight = 20.sp,
+                modifier = Modifier.padding(start = 46.dp)
+            )
         }
     }
 }

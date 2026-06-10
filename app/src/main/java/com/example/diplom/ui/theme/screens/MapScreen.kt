@@ -35,6 +35,7 @@ import androidx.core.content.ContextCompat
 import com.example.diplom.network.PointsRepository
 import com.yandex.mapkit.MapKitFactory
 import com.yandex.mapkit.geometry.Point
+import com.yandex.mapkit.geometry.Polyline
 import com.yandex.mapkit.map.CameraPosition
 import com.yandex.mapkit.map.IconStyle
 import com.yandex.mapkit.map.MapObjectTapListener
@@ -143,6 +144,10 @@ fun MapScreen(
 
     var alreadyTriggered by remember {
         mutableStateOf(setOf<String>())
+    }
+
+    var nearbyDistance by remember {
+        mutableFloatStateOf(0f)
     }
 
     var userPlacemark by remember {
@@ -352,10 +357,45 @@ fun MapScreen(
             }
     }
 
-    DisposableEffect(Unit){
+    DisposableEffect(exoPlayer) {
 
-        onDispose{
+        val listener = object : androidx.media3.common.Player.Listener {
 
+            override fun onPlaybackStateChanged(state: Int) {
+
+                if (state == androidx.media3.common.Player.STATE_ENDED) {
+
+                    if (currentPointIndex < routePlaces.lastIndex) {
+
+                        currentPointIndex++
+
+                        routePlaces.getOrNull(currentPointIndex)
+                            ?.let { nextPoint ->
+
+                                mapView.mapWindow.map.move(
+                                    CameraPosition(
+                                        nextPoint.point,
+                                        15f,
+                                        0f,
+                                        0f
+                                    )
+                                )
+                            }
+
+                    } else {
+
+                        tourStarted = false
+                        currentAudioPlace = null
+                    }
+                }
+            }
+        }
+
+        exoPlayer.addListener(listener)
+
+        onDispose {
+
+            exoPlayer.removeListener(listener)
             exoPlayer.release()
         }
     }
@@ -892,6 +932,17 @@ fun MapScreen(
                                         Color.White
                                 )
 
+                                Text(
+
+                                    text =
+                                        "${nearbyDistance.toInt()} м",
+
+                                    fontSize = 12.sp,
+
+                                    color =
+                                        Color.White.copy(alpha = 0.75f)
+                                )
+
                                 Spacer(
                                     Modifier.height(6.dp)
                                 )
@@ -1188,6 +1239,7 @@ fun MapScreen(
                         if (distance < 50f && !alreadyNear) {
 
                             nearbyPlace = currentPlace
+                            nearbyDistance = distance
 
                             alreadyTriggered =
                                 alreadyTriggered + currentPlace.id
@@ -1253,71 +1305,121 @@ fun MapScreen(
 
                                     audioStarted =
                                         audioStarted + currentPlace.id
-
-                                    exoPlayer.addListener(
-
-                                        object : androidx.media3.common.Player.Listener {
-
-                                            override fun onPlaybackStateChanged(
-                                                state: Int
-                                            ) {
-
-                                                if(
-                                                    state ==
-                                                    androidx.media3.common.Player.STATE_ENDED
-                                                ){
-
-                                                    if(
-                                                        currentPointIndex <
-                                                        routePlaces.lastIndex
-                                                    ){
-
-                                                        currentPointIndex++
-
-                                                        routePlaces
-                                                            .getOrNull(
-                                                                currentPointIndex
-                                                            )
-                                                            ?.let { nextPoint ->
-
-                                                                mapView
-                                                                    .mapWindow
-                                                                    .map
-                                                                    .move(
-
-                                                                        CameraPosition(
-
-                                                                            nextPoint.point,
-
-                                                                            15f,
-
-                                                                            0f,
-
-                                                                            0f
-                                                                        )
-                                                                    )
-                                                            }
-
-                                                    } else {
-
-                                                        tourStarted = false
-
-                                                        currentAudioPlace =
-                                                            null
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    )
                                 }
                             }
 
                             detailResult.onFailure {
+                                val offlineAudio = offlineRepository.getAudio(currentPlace.id.toInt())
+                                val audioUrl = if (offlineAudio?.audioUrl?.startsWith("/data/") == true)
+                                    "file://${offlineAudio.audioUrl}"
+                                else
+                                    buildMediaUrl(offlineAudio?.audioUrl)
+                                if (!audioUrl.isNullOrBlank()) {
+                                    audioPlace = currentPlace
+                                    exoPlayer.stop()
+                                    exoPlayer.clearMediaItems()
+                                    exoPlayer.setMediaItem(MediaItem.fromUri(audioUrl))
+                                    exoPlayer.prepare()
+                                    exoPlayer.play()
+                                    currentAudioPlace = PointDetailDto(
+                                        id = currentPlace.id.toInt(),
+                                        name = currentPlace.title,
+                                        description = null,
+                                        latitude = currentPlace.point.latitude,
+                                        longitude = currentPlace.point.longitude,
+                                        category = null,
+                                        region = null,
+                                        photos = null,
+                                        audio_guide = null,
+                                        created_at = null,
+                                        updated_at = null
+                                    )
+                                    audioStarted = audioStarted + currentPlace.id
+                                }
+                            }
+                        }
+                    }
 
-                                android.util.Log.e(
-                                    "AUDIO_TEST",
-                                    "ошибка=${it.message}"
+                    LaunchedEffect(userLocation, tourStarted) {
+
+                        if (tourStarted || userLocation == null || places.isEmpty())
+                            return@LaunchedEffect
+
+                        val nearest = places
+                            .filter { it.hasAudio }
+                            .minByOrNull { place ->
+                                val r = FloatArray(1)
+                                android.location.Location.distanceBetween(
+                                    userLocation!!.latitude,
+                                    userLocation!!.longitude,
+                                    place.point.latitude,
+                                    place.point.longitude,
+                                    r
                                 )
+                                r[0]
+                            } ?: return@LaunchedEffect
+
+                        val r = FloatArray(1)
+                        android.location.Location.distanceBetween(
+                            userLocation!!.latitude,
+                            userLocation!!.longitude,
+                            nearest.point.latitude,
+                            nearest.point.longitude,
+                            r
+                        )
+                        val dist = r[0]
+
+                        if (dist < 50f && !alreadyTriggered.contains(nearest.id)) {
+                            nearbyPlace = nearest
+                            nearbyDistance = dist
+                            alreadyTriggered = alreadyTriggered + nearest.id
+                        }
+
+                        if (dist < 30f && !audioStarted.contains(nearest.id)) {
+                            val detailResult =
+                                repository.getPointDetail(nearest.id.toInt())
+                            detailResult.onSuccess { detail ->
+                                val audioUrl =
+                                    buildMediaUrl(detail.audio_guide?.audio_file)
+                                if (!audioUrl.isNullOrBlank()) {
+                                    audioPlace = nearest
+                                    exoPlayer.stop()
+                                    exoPlayer.clearMediaItems()
+                                    exoPlayer.setMediaItem(MediaItem.fromUri(audioUrl))
+                                    exoPlayer.prepare()
+                                    exoPlayer.play()
+                                    currentAudioPlace = detail
+                                    audioStarted = audioStarted + nearest.id
+                                }
+                            }
+                            detailResult.onFailure {
+                                val offlineAudio = offlineRepository.getAudio(nearest.id.toInt())
+                                val audioUrl = if (offlineAudio?.audioUrl?.startsWith("/data/") == true)
+                                    "file://${offlineAudio.audioUrl}"
+                                else
+                                    buildMediaUrl(offlineAudio?.audioUrl)
+                                if (!audioUrl.isNullOrBlank()) {
+                                    audioPlace = nearest
+                                    exoPlayer.stop()
+                                    exoPlayer.clearMediaItems()
+                                    exoPlayer.setMediaItem(MediaItem.fromUri(audioUrl))
+                                    exoPlayer.prepare()
+                                    exoPlayer.play()
+                                    currentAudioPlace = PointDetailDto(
+                                        id = nearest.id.toInt(),
+                                        name = nearest.title,
+                                        description = null,
+                                        latitude = nearest.point.latitude,
+                                        longitude = nearest.point.longitude,
+                                        category = null,
+                                        region = null,
+                                        photos = null,
+                                        audio_guide = null,
+                                        created_at = null,
+                                        updated_at = null
+                                    )
+                                    audioStarted = audioStarted + nearest.id
+                                }
                             }
                         }
                     }
@@ -1371,29 +1473,19 @@ fun MapScreen(
                                     Button(
 
                                         onClick = {
-
                                             userLocation?.let { location ->
-
                                                 buildMultiRoute(
                                                     mapView = mapView,
                                                     router = drivingRouter,
                                                     userLocation = location,
                                                     places = routePlaces,
-
                                                     onInfoLoaded = { distance, time ->
-
                                                         routeDistance = distance
                                                         routeTime = time
                                                     },
-
                                                     routePolyline = routePolyline,
-
-                                                    onPolylineChanged = {
-
-                                                        routePolyline = it
-                                                    }
+                                                    onPolylineChanged = { routePolyline = it }
                                                 )
-
                                                 routeBuilt = true
                                             }
                                         }
@@ -1752,6 +1844,40 @@ fun MapScreen(
 
                                                 scope.launch {
 
+                                                    if (!isOnline(context)) {
+                                                        val fallback = routes.find { r -> r.id == route.id }
+                                                        val offlinePlaces = fallback?.route_points?.mapNotNull { rp ->
+                                                            val lat = rp.latitude?.toDoubleOrNull()
+                                                            val lon = rp.longitude?.toDoubleOrNull()
+                                                            if (lat != null && lon != null) {
+                                                                MapPlaceUi(
+                                                                    id = rp.point_id.toString(),
+                                                                    title = rp.name,
+                                                                    point = Point(lat, lon),
+                                                                    hasAudio = true
+                                                                )
+                                                            } else null
+                                                        } ?: emptyList()
+
+                                                        if (offlinePlaces.isNotEmpty()) {
+                                                            val sorted = userLocation?.let { loc ->
+                                                                offlinePlaces.sortedBy { p ->
+                                                                    val r = FloatArray(1)
+                                                                    android.location.Location.distanceBetween(
+                                                                        loc.latitude, loc.longitude,
+                                                                        p.point.latitude, p.point.longitude, r
+                                                                    )
+                                                                    r[0]
+                                                                }
+                                                            } ?: offlinePlaces
+                                                            routePlaces = sorted
+                                                            routeBuilt = true
+                                                        }
+                                                        showRoutesDialog = false
+                                                        selectedPlace = null
+                                                        return@launch
+                                                    }
+
                                                     val detailResult =
 
                                                         repository.getRouteDetail(
@@ -1832,33 +1958,54 @@ fun MapScreen(
                                                             null
 
                                                         userLocation?.let { location ->
-
                                                             buildMultiRoute(
-
                                                                 mapView = mapView,
-
                                                                 router = drivingRouter,
-
                                                                 userLocation = location,
-
                                                                 places = routePlaces,
-
                                                                 onInfoLoaded = { distance, time ->
-
                                                                     routeDistance = distance
                                                                     routeTime = time
                                                                 },
-
                                                                 routePolyline = routePolyline,
-
-                                                                onPolylineChanged = {
-
-                                                                    routePolyline = it
-                                                                }
+                                                                onPolylineChanged = { routePolyline = it }
                                                             )
-
                                                             routeBuilt = true
                                                         }
+                                                    }.onFailure {
+
+                                                        // Offline fallback: use route_points from already-loaded routes list
+                                                        val fallback = routes.find { r -> r.id == route.id }
+                                                        val offlinePlaces = fallback?.route_points?.mapNotNull { rp ->
+                                                            val lat = rp.latitude?.toDoubleOrNull()
+                                                            val lon = rp.longitude?.toDoubleOrNull()
+                                                            if (lat != null && lon != null) {
+                                                                MapPlaceUi(
+                                                                    id = rp.point_id.toString(),
+                                                                    title = rp.name,
+                                                                    point = Point(lat, lon),
+                                                                    hasAudio = true
+                                                                )
+                                                            } else null
+                                                        } ?: emptyList()
+
+                                                        if (offlinePlaces.isNotEmpty()) {
+                                                            val sorted = userLocation?.let { loc ->
+                                                                offlinePlaces.sortedBy { p ->
+                                                                    val r = FloatArray(1)
+                                                                    android.location.Location.distanceBetween(
+                                                                        loc.latitude, loc.longitude,
+                                                                        p.point.latitude, p.point.longitude, r
+                                                                    )
+                                                                    r[0]
+                                                                }
+                                                            } ?: offlinePlaces
+                                                            routePlaces = sorted
+                                                            routeBuilt = true
+                                                        }
+
+                                                        showRoutesDialog = false
+                                                        selectedPlace = null
                                                     }
                                                 }
                                             }
@@ -2151,80 +2298,93 @@ private fun buildMultiRoute(
 
 
     router.requestRoutes(
-
         points,
-
         DrivingOptions(),
-
         VehicleOptions(),
+        object : DrivingSession.DrivingRouteListener {
 
-        object :
-            DrivingSession.DrivingRouteListener {
-
-            override fun onDrivingRoutes(
-                routes: MutableList<DrivingRoute>
-            ) {
-
-                if (routes.isEmpty()) return
+            override fun onDrivingRoutes(routes: MutableList<DrivingRoute>) {
+                if (routes.isEmpty()) {
+                    drawStraightPolyline(
+                        mapView, startPoint, places,
+                        routePolyline, onInfoLoaded, onPolylineChanged
+                    )
+                    return
+                }
                 val route = routes[0]
-
-                val distanceKm =
-                    route.metadata.weight.distance.value / 1000
-
-                val timeMinutes =
-                    route.metadata.weight.time.value / 60
+                val distanceKm = route.metadata.weight.distance.value / 1000
+                val timeMinutes = route.metadata.weight.time.value / 60
 
                 onInfoLoaded(
-
-                    String.format(
-                        "%.1f км",
-                        distanceKm
-                    ),
-
+                    String.format("%.1f км", distanceKm),
                     "~${timeMinutes.toInt()} мин"
                 )
 
-                val mapObjects =
-                    mapView.mapWindow.map.mapObjects
+                val mapObjects = mapView.mapWindow.map.mapObjects
+                routePolyline?.let { mapObjects.remove(it) }
 
-                routePolyline?.let {
-                    mapObjects.remove(it)
-                }
-
-                val polyline =
-                    mapObjects.addPolyline(
-                        routes[0].geometry
-                    )
-
+                val polyline = mapObjects.addPolyline(routes[0].geometry)
                 @Suppress("DEPRECATION")
                 polyline.strokeWidth = 3f
-
                 polyline.outlineWidth = 1f
                 polyline.zIndex = -1f
 
                 onPolylineChanged(polyline)
-
-
-//                    mapView.mapWindow.map.move(
-//                    CameraPosition(
-//                        Point(
-//                            userLocation.latitude,
-//                            userLocation.longitude
-//                        ),
-//                        14f,
-//                        0f,
-//                        0f
-//                    )
-//                )
             }
 
-            override fun onDrivingRoutesError(
-                error: com.yandex.runtime.Error
-            ) {
-
+            override fun onDrivingRoutesError(error: com.yandex.runtime.Error) {
+                drawStraightPolyline(
+                    mapView, startPoint, places,
+                    routePolyline, onInfoLoaded, onPolylineChanged
+                )
             }
         }
     )
+}
+
+private fun drawStraightPolyline(
+    mapView: MapView,
+    startPoint: Point?,
+    places: List<MapPlaceUi>,
+    currentPolyline: com.yandex.mapkit.map.PolylineMapObject?,
+    onInfoLoaded: (String, String) -> Unit,
+    onPolylineChanged: (com.yandex.mapkit.map.PolylineMapObject?) -> Unit
+) {
+    val allPoints = buildList {
+        startPoint?.let { add(it) }
+        addAll(places.map { it.point })
+    }
+    if (allPoints.size < 2) return
+    val mapObjects = mapView.mapWindow.map.mapObjects
+
+    currentPolyline?.let {
+        if (it.isValid) mapObjects.remove(it)
+    }
+
+    val polyline = mapObjects.addPolyline(Polyline(allPoints))
+    @Suppress("DEPRECATION")
+    polyline.strokeWidth = 5f
+    polyline.outlineWidth = 1f
+    polyline.zIndex = 10f
+    polyline.setStrokeColor(android.graphics.Color.argb(255, 41, 121, 255))
+
+    android.util.Log.d(
+        "POLYLINE",
+        "pts=${allPoints.size} valid=${polyline.isValid} " +
+        allPoints.joinToString { "(${it.latitude},${it.longitude})" }
+    )
+
+    onInfoLoaded("${places.size} точек", "Пешком")
+    onPolylineChanged(polyline)
+}
+
+private fun isOnline(context: android.content.Context): Boolean {
+    val cm = context.getSystemService(android.content.Context.CONNECTIVITY_SERVICE)
+            as android.net.ConnectivityManager
+    val network = cm.activeNetwork ?: return false
+    val caps = cm.getNetworkCapabilities(network) ?: return false
+    return caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+           caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED)
 }
 
 private fun createMarkerBitmap(): Bitmap {
@@ -2375,9 +2535,9 @@ private fun buildMediaUrl(
             path
 
         path.startsWith("/") ->
-            "http://192.168.0.166:8000$path"
+            "https://yave4en.pythonanywhere.com$path"
 
         else ->
-            "http://192.168.0.166:8000/$path"
+            "https://yave4en.pythonanywhere.com/$path"
     }
 }

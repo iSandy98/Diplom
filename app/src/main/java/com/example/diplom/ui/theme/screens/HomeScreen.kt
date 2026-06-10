@@ -179,11 +179,6 @@ fun HomeScreen(
         storiesResult
             .onSuccess { data ->
 
-                offlineRepository.saveStories(
-                    "all",
-                    data
-                )
-
                 stories =
                     data
                         .take(5)
@@ -206,6 +201,13 @@ fun HomeScreen(
                                     )
                             )
                         }
+
+                // Save for offline without blocking display and without downloading images
+                offlineRepository.saveStories(
+                    "all",
+                    data,
+                    downloadImages = false
+                )
             }
 
             .onFailure {
@@ -234,9 +236,10 @@ fun HomeScreen(
                                     it.description ?: "",
 
                                 imageUrl =
-                                    buildImageUrl(
-                                        it.image
-                                    )
+                                    if (it.image?.startsWith("/data/") == true)
+                                        "file://${it.image}"
+                                    else
+                                        buildImageUrl(it.image)
                             )
                         }
             }

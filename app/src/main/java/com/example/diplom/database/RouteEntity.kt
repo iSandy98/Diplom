@@ -15,5 +15,8 @@ data class RouteEntity(
 
     val description:String?,
 
-    val duration:Int?
+    val duration:Int?,
+
+    val regionName:String = ""
 )
+

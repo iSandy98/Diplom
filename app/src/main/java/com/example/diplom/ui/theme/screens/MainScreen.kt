@@ -115,7 +115,7 @@ fun MainScreen(
         containerColor = Color.White,
         bottomBar = {
             NavigationBar(
-                containerColor = Color.White
+                containerColor = Color(0xFFFFF8F0)
             ) {
                 NavigationBarItem(
                     selected = isHomeSelected,

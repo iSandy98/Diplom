@@ -6,6 +6,7 @@ import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
 import com.google.gson.annotations.SerializedName
+import retrofit2.Response
 
 
 data class RegisterRequest(
@@ -202,6 +203,24 @@ data class RoutePointDto(
     val note:String?
 )
 
+data class ReviewRequest(
+    val point: Int,
+    val rating: Int,
+    val comment: String
+)
+
+data class ReviewDto(
+    val id: Int,
+    val user: Int,
+    val user_name: String?,
+    val user_avatar: String?,
+    val point: Int?,
+    val rating: Int,
+    val comment: String?,
+    val is_approved: Boolean,
+    val created_at: String?
+)
+
 data class RouteDetailDto(
 
     val id:Int,
@@ -305,5 +324,13 @@ interface ApiService {
 
     ): RouteDetailDto
 
+    @GET("api/reviews/")
+    suspend fun getReviews(
+        @Query("point") pointId: Int
+    ): PagedResponse<ReviewDto>
 
+    @POST("api/reviews/")
+    suspend fun addReview(
+        @Body body: ReviewRequest
+    ): Response<Unit>
 }

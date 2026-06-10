@@ -24,7 +24,7 @@ import androidx.room.RoomDatabase
 
     ],
 
-    version = 10
+    version = 11
 )
 
 abstract class AppDatabase :
