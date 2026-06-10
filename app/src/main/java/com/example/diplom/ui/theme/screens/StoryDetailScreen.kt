@@ -4,11 +4,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.TextButton
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -59,6 +62,10 @@ fun StoryDetailScreen(
     var story by remember { mutableStateOf<StoryDto?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var errorText by remember { mutableStateOf<String?>(null) }
+
+    var displayTitle by remember { mutableStateOf("") }
+    var displayDescription by remember { mutableStateOf("") }
+    var isTranslating by remember { mutableStateOf(false) }
 
     LaunchedEffect(storyId) {
         isLoading = true
@@ -116,6 +123,21 @@ fun StoryDetailScreen(
         isLoading = false
     }
 
+    LaunchedEffect(story, com.example.diplom.utils.LanguageState.isEnglish) {
+        val s = story ?: return@LaunchedEffect
+        if (com.example.diplom.utils.LanguageState.isEnglish) {
+            isTranslating = true
+            displayTitle = com.example.diplom.utils.TranslationHelper.translate(s.title)
+            displayDescription = com.example.diplom.utils.TranslationHelper.translate(
+                s.description ?: "No description"
+            )
+            isTranslating = false
+        } else {
+            displayTitle = s.title
+            displayDescription = s.description ?: "Описание отсутствует"
+        }
+    }
+
     when {
         isLoading -> {
             Box(
@@ -152,21 +174,38 @@ fun StoryDetailScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(top = 16.dp)
             ) {
-                IconButton(
-                    onClick = onBack,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Назад",
-                        tint = Color(0xFF1F1F1F)
-                    )
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Назад",
+                            tint = Color(0xFF1F1F1F)
+                        )
+                    }
+                    Spacer(Modifier.weight(1f))
+                    TextButton(
+                        onClick = {
+                            com.example.diplom.utils.LanguageState.isEnglish =
+                                !com.example.diplom.utils.LanguageState.isEnglish
+                        }
+                    ) {
+                        Text(
+                            text = if (com.example.diplom.utils.LanguageState.isEnglish) "RU" else "EN",
+                            fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                            color = Color(0xFF49454F)
+                        )
+                    }
                 }
 
                 Spacer(Modifier.height(16.dp))
 
                 Text(
-                    text = currentStory.title,
+                    text = displayTitle.ifBlank { currentStory.title },
                     style = TextStyle(
                         fontSize = 28.sp,
                         lineHeight = 36.sp
@@ -201,8 +240,17 @@ fun StoryDetailScreen(
 
                 Spacer(Modifier.height(20.dp))
 
+                if (isTranslating) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                }
+
                 Text(
-                    text = currentStory.description ?: "Описание отсутствует",
+                    text = displayDescription.ifBlank { currentStory.description ?: "Описание отсутствует" },
                     color = Color(0xFF1F1F1F),
                     fontSize = 16.sp,
                     lineHeight = 24.sp,

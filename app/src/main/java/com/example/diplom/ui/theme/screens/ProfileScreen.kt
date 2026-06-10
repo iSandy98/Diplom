@@ -56,13 +56,15 @@ fun ProfileScreen(
         else -> "Пользователь"
     }
 
+    val isEn = com.example.diplom.utils.LanguageState.isEnglish
+
     val email = when {
-        isGuest -> "Гостевой вход"
-        profile != null -> profile?.email ?: "Не указан"
-        else -> "Загрузка..."
+        isGuest -> if (isEn) "Guest login" else "Гостевой вход"
+        profile != null -> profile?.email ?: if (isEn) "Not specified" else "Не указан"
+        else -> if (isEn) "Loading..." else "Загрузка..."
     }
 
-    val phone = if (isGuest) "Не указан" else "Не указан"
+    val phone = if (isEn) "Not specified" else "Не указан"
 
     Column(
         modifier = Modifier
@@ -72,11 +74,29 @@ fun ProfileScreen(
     ) {
         Spacer(Modifier.height(16.dp))
 
-        IconButton(onClick = onBack) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Назад"
-            )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Назад"
+                )
+            }
+            TextButton(
+                onClick = {
+                    com.example.diplom.utils.LanguageState.isEnglish =
+                        !com.example.diplom.utils.LanguageState.isEnglish
+                }
+            ) {
+                Text(
+                    text = if (com.example.diplom.utils.LanguageState.isEnglish) "RU" else "EN",
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = Color(0xFF49454F)
+                )
+            }
         }
 
         Spacer(Modifier.height(20.dp))
@@ -104,7 +124,12 @@ fun ProfileScreen(
                 modifier = Modifier.padding(20.dp)
             ) {
                 Text(
-                    text = if (isGuest) "Гостевой профиль" else "Профиль",
+                    text = when {
+                        isGuest && com.example.diplom.utils.LanguageState.isEnglish -> "Guest Profile"
+                        isGuest -> "Гостевой профиль"
+                        com.example.diplom.utils.LanguageState.isEnglish -> "Profile"
+                        else -> "Профиль"
+                    },
                     fontSize = 24.sp,
                     color = Color(0xFF1F1F1F),
                     modifier = Modifier.fillMaxWidth(),
@@ -121,9 +146,11 @@ fun ProfileScreen(
                         CircularProgressIndicator()
                     }
                 } else {
+                    val isEn = com.example.diplom.utils.LanguageState.isEnglish
+
                     ProfileItem(
                         icon = Icons.Outlined.Person,
-                        label = "Полное имя",
+                        label = if (isEn) "Full name" else "Полное имя",
                         value = fullName
                     )
 
@@ -139,7 +166,7 @@ fun ProfileScreen(
 
                     ProfileItem(
                         icon = Icons.Outlined.Phone,
-                        label = "Номер телефона",
+                        label = if (isEn) "Phone number" else "Номер телефона",
                         value = phone
                     )
 
@@ -155,7 +182,7 @@ fun ProfileScreen(
                                 contentColor = Color.White
                             )
                         ) {
-                            Text("Редактировать профиль")
+                            Text(if (isEn) "Edit Profile" else "Редактировать профиль")
                         }
 
                         Spacer(Modifier.height(12.dp))
@@ -170,7 +197,7 @@ fun ProfileScreen(
                             contentColor = Color.White
                         )
                     ) {
-                        Text("Выйти")
+                        Text(if (isEn) "Log out" else "Выйти")
                     }
                 }
             }

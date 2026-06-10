@@ -242,12 +242,25 @@ fun DistrictsScreen(
                     tint = Color(0xFF1F1F1F)
                 )
             }
+            Spacer(Modifier.weight(1f))
+            androidx.compose.material3.TextButton(
+                onClick = {
+                    com.example.diplom.utils.LanguageState.isEnglish =
+                        !com.example.diplom.utils.LanguageState.isEnglish
+                }
+            ) {
+                Text(
+                    text = if (com.example.diplom.utils.LanguageState.isEnglish) "RU" else "EN",
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = Color(0xFF49454F)
+                )
+            }
         }
 
         Spacer(Modifier.height(24.dp))
 
         Text(
-            text = "Районы Якутии",
+            text = if (com.example.diplom.utils.LanguageState.isEnglish) "Districts of Yakutia" else "Районы Якутии",
             style = TextStyle(fontSize = 28.sp, lineHeight = 36.sp),
             color = Color(0xFF1F1F1F),
             modifier = Modifier.padding(horizontal = 16.dp)
@@ -260,7 +273,7 @@ fun DistrictsScreen(
             onValueChange = { query = it },
             placeholder = {
                 Text(
-                    "Введите название района",
+                    if (com.example.diplom.utils.LanguageState.isEnglish) "Enter district name" else "Введите название района",
                     color = Color(0xFF666666),
                     fontSize = 16.sp
                 )
@@ -315,7 +328,7 @@ fun DistrictsScreen(
                 text = {
 
                     Text(
-                        "Все (${regions.size})"
+                        if (com.example.diplom.utils.LanguageState.isEnglish) "All (${regions.size})" else "Все (${regions.size})"
                     )
                 }
             )
@@ -337,8 +350,7 @@ fun DistrictsScreen(
                 text = {
 
                     Text(
-
-                        "Скачанные (${downloadedIds.size})"
+                        if (com.example.diplom.utils.LanguageState.isEnglish) "Downloaded (${downloadedIds.size})" else "Скачанные (${downloadedIds.size})"
                     )
                 }
             )
@@ -753,7 +765,7 @@ private fun DistrictRowFromApi(
                 Spacer(Modifier.height(4.dp))
 
                 Text(
-                    text = region.description ?: "Описание отсутствует",
+                    text = region.description ?: if (com.example.diplom.utils.LanguageState.isEnglish) "No description" else "Описание отсутствует",
                     fontSize = 12.sp,
                     lineHeight = 18.sp,
                     color = Color(0xFF49454F)
@@ -773,8 +785,10 @@ private fun DistrictRowFromApi(
                         Text(
 
                             text =
-                                "✓ Доступно оффлайн • %.1f МБ"
-                                    .format(sizeMb),
+                                if (com.example.diplom.utils.LanguageState.isEnglish)
+                                    "✓ Available offline • %.1f MB".format(sizeMb)
+                                else
+                                    "✓ Доступно оффлайн • %.1f МБ".format(sizeMb),
 
                             color =
                                 Color(0xFF4CAF50),

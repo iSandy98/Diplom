@@ -14,10 +14,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -25,10 +23,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.diplom.utils.CurrentRegionManager
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 
 private sealed class MainRoute(
     val route: String,
@@ -54,27 +48,6 @@ fun MainScreen(
     onLogout: () -> Unit = {}
 ) {
     val navController = rememberNavController()
-    val context =
-        LocalContext.current
-
-    val currentRegionManager =
-
-        remember {
-
-            CurrentRegionManager(
-                context
-            )
-        }
-
-    val offlineRepository =
-
-        remember {
-
-            com.example.diplom.network
-                .OfflineRepository(
-                    context
-                )
-        }
 
     val currentBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = currentBackStackEntry?.destination?.route ?: ""
@@ -145,7 +118,7 @@ fun MainScreen(
                             contentDescription = "Главная"
                         )
                     },
-                    label = { Text("Главная") },
+                    label = { Text(if (com.example.diplom.utils.LanguageState.isEnglish) "Home" else "Главная") },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color(0xFF1F1F1F),
                         selectedTextColor = Color(0xFF1F1F1F),
@@ -183,7 +156,7 @@ fun MainScreen(
                             contentDescription = "Карта"
                         )
                     },
-                    label = { Text("Карта") },
+                    label = { Text(if (com.example.diplom.utils.LanguageState.isEnglish) "Map" else "Карта") },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color(0xFF1F1F1F),
                         selectedTextColor = Color(0xFF1F1F1F),
@@ -221,7 +194,7 @@ fun MainScreen(
                             contentDescription = "Профиль"
                         )
                     },
-                    label = { Text("Профиль") },
+                    label = { Text(if (com.example.diplom.utils.LanguageState.isEnglish) "Profile" else "Профиль") },
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = Color(0xFF1F1F1F),
                         selectedTextColor = Color(0xFF1F1F1F),
@@ -248,41 +221,7 @@ fun MainScreen(
                         }
                     },
                     onOpenDistrict = { districtId ->
-
-                        CoroutineScope(
-                            Dispatchers.IO
-                        ).launch {
-
-                            val region =
-
-                                offlineRepository
-                                    .getRegions()
-                                    .firstOrNull {
-
-                                        it.id.toString() ==
-                                                districtId
-                                    }
-
-                            region?.name?.let {
-
-                                currentRegionManager
-                                    .saveRegion(it)
-                            }
-                        }
-
-                        navController.navigate(
-                            MainRoute.Home.route
-                        ) {
-
-                            popUpTo(
-                                MainRoute.Home.route
-                            ) {
-
-                                inclusive = true
-                            }
-
-                            launchSingleTop = true
-                        }
+                        navController.navigate("district_detail/$districtId")
                     },
                     onOpenDistrictsList = {
                         navController.navigate(MainRoute.Districts.route)

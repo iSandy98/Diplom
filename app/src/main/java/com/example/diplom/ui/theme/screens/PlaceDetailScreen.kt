@@ -87,6 +87,10 @@ fun PlaceDetailScreen(
     var isLoading by remember { mutableStateOf(true) }
     var errorText by remember { mutableStateOf<String?>(null) }
 
+    var displayName by remember { mutableStateOf("") }
+    var displayDescription by remember { mutableStateOf("") }
+    var isTranslating by remember { mutableStateOf(false) }
+
     var showPlayer by remember { mutableStateOf(false) }
     var isPlaying by remember { mutableStateOf(false) }
     var playerError by remember { mutableStateOf<String?>(null) }
@@ -271,6 +275,21 @@ fun PlaceDetailScreen(
         isLoading = false
     }
 
+    LaunchedEffect(place, com.example.diplom.utils.LanguageState.isEnglish) {
+        val p = place ?: return@LaunchedEffect
+        if (com.example.diplom.utils.LanguageState.isEnglish) {
+            isTranslating = true
+            displayName = com.example.diplom.utils.TranslationHelper.translate(p.name)
+            displayDescription = com.example.diplom.utils.TranslationHelper.translate(
+                p.description ?: "No description"
+            )
+            isTranslating = false
+        } else {
+            displayName = p.name
+            displayDescription = p.description ?: "Описание отсутствует"
+        }
+    }
+
     val placeIdInt = placeId.toIntOrNull()
     LaunchedEffect(placeIdInt, reviewVersion) {
         if (placeIdInt == null) return@LaunchedEffect
@@ -349,15 +368,24 @@ fun PlaceDetailScreen(
                         }
 
                         Text(
-                            text = "Страница",
+                            text = if (com.example.diplom.utils.LanguageState.isEnglish) "Page" else "Страница",
                             fontSize = 20.sp,
                             color = Color(0xFF1F1F1F)
                         )
 
                         Spacer(Modifier.weight(1f))
 
-                        IconButton(onClick = { }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Меню")
+                        androidx.compose.material3.TextButton(
+                            onClick = {
+                                com.example.diplom.utils.LanguageState.isEnglish =
+                                    !com.example.diplom.utils.LanguageState.isEnglish
+                            }
+                        ) {
+                            Text(
+                                text = if (com.example.diplom.utils.LanguageState.isEnglish) "RU" else "EN",
+                                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                                color = Color(0xFF49454F)
+                            )
                         }
                     }
 
@@ -383,7 +411,7 @@ fun PlaceDetailScreen(
                             Text(
 
                                 text =
-                                    "🎧 Аудиогид скоро появится",
+                                    if (com.example.diplom.utils.LanguageState.isEnglish) "🎧 Audio guide coming soon" else "🎧 Аудиогид скоро появится",
 
                                 color =
                                     Color.Gray,
@@ -464,7 +492,7 @@ fun PlaceDetailScreen(
 
                             ) {
 
-                                Text("Послушать аудиогид")
+                                Text(if (com.example.diplom.utils.LanguageState.isEnglish) "Listen to Audio Guide" else "Послушать аудиогид")
 
                                 Spacer(
                                     Modifier.width(8.dp)
@@ -489,8 +517,16 @@ fun PlaceDetailScreen(
 
                     Spacer(Modifier.height(10.dp))
 
+                    if (isTranslating) {
+                        androidx.compose.material3.LinearProgressIndicator(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp)
+                        )
+                    }
+
                     Text(
-                        text = currentPlace.description ?: "Описание отсутствует",
+                        text = displayDescription.ifBlank { currentPlace.description ?: "Описание отсутствует" },
                         modifier = Modifier.padding(horizontal = 16.dp),
                         color = Color(0xFF1F1F1F),
                         lineHeight = 22.sp
@@ -599,7 +635,7 @@ fun PlaceDetailScreen(
                     )
 
                     Text(
-                        text = "Отзывы и рейтинг",
+                        text = if (com.example.diplom.utils.LanguageState.isEnglish) "Reviews and Rating" else "Отзывы и рейтинг",
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold,
                         modifier =
@@ -613,7 +649,7 @@ fun PlaceDetailScreen(
                     )
 
                     Text(
-                        text = "Оцените место",
+                        text = if (com.example.diplom.utils.LanguageState.isEnglish) "Rate this place" else "Оцените место",
                         color = Color.Gray,
                         fontSize = 14.sp,
                         modifier =
@@ -715,7 +751,7 @@ fun PlaceDetailScreen(
                             placeholder = {
 
                                 Text(
-                                    "Напишите отзыв..."
+                                    if (com.example.diplom.utils.LanguageState.isEnglish) "Write a review..." else "Напишите отзыв..."
                                 )
                             }
                         )
@@ -756,14 +792,14 @@ fun PlaceDetailScreen(
                                     color = Color.White
                                 )
                             } else {
-                                Text("Отправить")
+                                Text(if (com.example.diplom.utils.LanguageState.isEnglish) "Submit" else "Отправить")
                             }
                         }
 
                         if (reviewSent) {
                             Spacer(Modifier.height(8.dp))
                             Text(
-                                text = "Спасибо за ваш отзыв!",
+                                text = if (com.example.diplom.utils.LanguageState.isEnglish) "Thank you for your review!" else "Спасибо за ваш отзыв!",
                                 color = Color(0xFF4CAF50),
                                 modifier = Modifier.padding(horizontal = 16.dp),
                                 fontSize = 14.sp
@@ -812,7 +848,7 @@ fun PlaceDetailScreen(
                             ) {
 
                                 Text(
-                                    "Только зарегистрированные пользователи могут оставлять отзывы"
+                                    if (com.example.diplom.utils.LanguageState.isEnglish) "Only registered users can leave reviews" else "Только зарегистрированные пользователи могут оставлять отзывы"
                                 )
 
                                 Spacer(
@@ -842,7 +878,7 @@ fun PlaceDetailScreen(
                                 ) {
 
                                     Text(
-                                        "Войти"
+                                        if (com.example.diplom.utils.LanguageState.isEnglish) "Log In" else "Войти"
                                     )
                                 }
                             }
@@ -866,7 +902,7 @@ fun PlaceDetailScreen(
                         }
                     } else if (reviews.isEmpty()) {
                         Text(
-                            text = "Отзывов пока нет. Будьте первым!",
+                            text = if (com.example.diplom.utils.LanguageState.isEnglish) "No reviews yet. Be the first!" else "Отзывов пока нет. Будьте первым!",
                             color = Color.Gray,
                             fontSize = 14.sp,
                             modifier = Modifier.padding(horizontal = 16.dp)
@@ -950,7 +986,7 @@ fun PlaceDetailScreen(
                                     modifier = Modifier.weight(1f)
                                 ) {
                                     Text(
-                                        text = currentPlace.name,
+                                        text = displayName.ifBlank { currentPlace.name },
                                         color = Color(0xFF1F1F1F)
                                     )
 

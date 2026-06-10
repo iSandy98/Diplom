@@ -67,6 +67,11 @@ fun DistrictDetailScreen(
     var places by remember { mutableStateOf<List<PlaceUi>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
+    var displayDistrictName by remember { mutableStateOf("") }
+    var displayOtherDistricts by remember { mutableStateOf<List<DistrictUi>>(emptyList()) }
+    var displayPlaces by remember { mutableStateOf<List<PlaceUi>>(emptyList()) }
+    var displayStories by remember { mutableStateOf<List<StoryUi>>(emptyList()) }
+
     val storiesRepository =
         remember {
             StoriesRepository(
@@ -481,6 +486,26 @@ fun DistrictDetailScreen(
         isLoading = false
     }
 
+    LaunchedEffect(district, com.example.diplom.utils.LanguageState.isEnglish) {
+        val d = district ?: return@LaunchedEffect
+        displayDistrictName = if (com.example.diplom.utils.LanguageState.isEnglish)
+            com.example.diplom.utils.TranslationHelper.translate(d.name)
+        else
+            d.name
+    }
+
+    LaunchedEffect(com.example.diplom.utils.LanguageState.isEnglish, otherDistricts, places, stories) {
+        if (com.example.diplom.utils.LanguageState.isEnglish) {
+            displayOtherDistricts = otherDistricts.map { it.copy(title = com.example.diplom.utils.TranslationHelper.translate(it.title)) }
+            displayPlaces = places.map { it.copy(title = com.example.diplom.utils.TranslationHelper.translate(it.title), locationLabel = com.example.diplom.utils.TranslationHelper.translate(it.locationLabel)) }
+            displayStories = stories.map { it.copy(title = com.example.diplom.utils.TranslationHelper.translate(it.title)) }
+        } else {
+            displayOtherDistricts = otherDistricts
+            displayPlaces = places
+            displayStories = stories
+        }
+    }
+
     if (isLoading) {
         androidx.compose.foundation.layout.Box(
             modifier = Modifier
@@ -502,21 +527,21 @@ fun DistrictDetailScreen(
     ) {
         item {
             DistrictTopBar(
-                title = district?.name ?: "Район",
+                title = displayDistrictName.ifBlank { district?.name ?: "Район" },
                 onOpenProfile = onOpenProfile
             )
         }
 
         item {
             SectionHeader(
-                title = "Другие районы Якутии",
+                title = if (com.example.diplom.utils.LanguageState.isEnglish) "Other Districts of Yakutia" else "Другие районы Якутии",
                 onClick = onOpenDistrictsList
             )
         }
 
         item {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(15.dp)) {
-                items(otherDistricts) { item ->
+                items(displayOtherDistricts) { item ->
                     DistrictItem(
                         item = item,
                         onClick = { onOpenDistrict(item.id) }
@@ -527,21 +552,21 @@ fun DistrictDetailScreen(
 
         item {
             SectionHeader(
-                title = "Рядом со мной",
+                title = if (com.example.diplom.utils.LanguageState.isEnglish) "Near Me" else "Рядом со мной",
                 onClick = onOpenMap
             )
         }
 
         item {
             NearbyMapPreview(
-                places = places,
+                places = displayPlaces,
                 onClick = onOpenMap
             )
         }
 
         item {
             SectionHeader(
-                title = "История на фотографиях",
+                title = if (com.example.diplom.utils.LanguageState.isEnglish) "History in Photos" else "История на фотографиях",
                 onClick = onOpenStories
             )
         }
@@ -549,7 +574,7 @@ fun DistrictDetailScreen(
         item {
             androidx.compose.foundation.layout.Column {
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(stories) { story ->
+                    items(displayStories) { story ->
                         StoryItem(item = story)
                     }
                 }
@@ -578,20 +603,20 @@ fun DistrictDetailScreen(
 
         item {
             SectionHeader(
-                title = "Интересные места",
+                title = if (com.example.diplom.utils.LanguageState.isEnglish) "Places of Interest" else "Интересные места",
                 onClick = {}
             )
         }
 
-        if (places.isEmpty()) {
+        if (displayPlaces.isEmpty()) {
             item {
                 Text(
-                    text = "В этом районе пока нет достопримечательностей",
+                    text = if (com.example.diplom.utils.LanguageState.isEnglish) "No attractions in this district yet" else "В этом районе пока нет достопримечательностей",
                     color = Color(0xFF49454F)
                 )
             }
         } else {
-            items(places) { place ->
+            items(displayPlaces) { place ->
                 PlaceItem(
                     item = place,
                     onClick = { onOpenPlace(place.id) },
@@ -615,7 +640,7 @@ private fun DistrictTopBar(
     ) {
         androidx.compose.foundation.layout.Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start,
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
         ) {
             IconButton(onClick = onOpenProfile) {
@@ -623,6 +648,18 @@ private fun DistrictTopBar(
                     imageVector = Icons.Outlined.AccountCircle,
                     contentDescription = "Профиль",
                     tint = Color(0xFF1F1F1F)
+                )
+            }
+            androidx.compose.material3.TextButton(
+                onClick = {
+                    com.example.diplom.utils.LanguageState.isEnglish =
+                        !com.example.diplom.utils.LanguageState.isEnglish
+                }
+            ) {
+                androidx.compose.material3.Text(
+                    text = if (com.example.diplom.utils.LanguageState.isEnglish) "RU" else "EN",
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = Color(0xFF49454F)
                 )
             }
         }

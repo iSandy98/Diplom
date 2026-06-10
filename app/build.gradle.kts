@@ -94,6 +94,8 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+
+    implementation("com.google.mlkit:translate:17.0.3")
 }
 
 kotlin {

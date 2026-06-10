@@ -633,12 +633,25 @@ fun MapScreen(
                     tint = Color(0xFF1F1F1F)
                 )
             }
+            Spacer(Modifier.weight(1f))
+            TextButton(
+                onClick = {
+                    com.example.diplom.utils.LanguageState.isEnglish =
+                        !com.example.diplom.utils.LanguageState.isEnglish
+                }
+            ) {
+                Text(
+                    text = if (com.example.diplom.utils.LanguageState.isEnglish) "RU" else "EN",
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = Color(0xFF49454F)
+                )
+            }
         }
 
         Spacer(Modifier.height(24.dp))
 
         Text(
-            text = "Карта",
+            text = if (com.example.diplom.utils.LanguageState.isEnglish) "Map" else "Карта",
             fontSize = 28.sp,
             color = Color(0xFF1F1F1F),
             modifier = Modifier.padding(horizontal = 16.dp)
@@ -663,7 +676,7 @@ fun MapScreen(
             placeholder = {
 
                 Text(
-                    "Поиск места, города"
+                    if (com.example.diplom.utils.LanguageState.isEnglish) "Search place, city" else "Поиск места, города"
                 )
 
             },
@@ -755,7 +768,7 @@ fun MapScreen(
                                 ){
 
                                     Text(
-                                        "🎧 Сейчас играет"
+                                        if (com.example.diplom.utils.LanguageState.isEnglish) "🎧 Now playing" else "🎧 Сейчас играет"
                                     )
 
                                     Text(
@@ -822,16 +835,15 @@ fun MapScreen(
                                 Column{
 
                                     Text(
-                                        "🎧 Экскурсия идет"
+                                        if (com.example.diplom.utils.LanguageState.isEnglish) "🎧 Tour in progress" else "🎧 Экскурсия идет"
                                     )
 
                                     Text(
 
-                                        text =
-                                            "Точка " +
-                                                    "${currentPointIndex+1}" +
-                                                    " из " +
-                                                    routePlaces.size,
+                                        text = if (com.example.diplom.utils.LanguageState.isEnglish)
+                                            "Point ${currentPointIndex+1} of ${routePlaces.size}"
+                                        else
+                                            "Точка ${currentPointIndex+1} из ${routePlaces.size}",
 
                                         fontSize = 12.sp,
                                         color = Color.Gray
@@ -877,7 +889,7 @@ fun MapScreen(
 
                                 ){
 
-                                    Text("Стоп")
+                                    Text(if (com.example.diplom.utils.LanguageState.isEnglish) "Stop" else "Стоп")
                                 }
                             }
                         }
@@ -925,8 +937,7 @@ fun MapScreen(
 
                                 Text(
 
-                                    text =
-                                        "📍 Вы рядом с объектом",
+                                    text = if (com.example.diplom.utils.LanguageState.isEnglish) "📍 You are near an attraction" else "📍 Вы рядом с объектом",
 
                                     color =
                                         Color.White
@@ -990,7 +1001,7 @@ fun MapScreen(
                             ){
 
                                 Text(
-                                    "🎧 Аудиогид готов",
+                                    if (com.example.diplom.utils.LanguageState.isEnglish) "🎧 Audio guide ready" else "🎧 Аудиогид готов",
                                     color = Color.White
                                 )
 
@@ -1023,7 +1034,7 @@ fun MapScreen(
 
                                     ){
 
-                                        Text("Позже")
+                                        Text(if (com.example.diplom.utils.LanguageState.isEnglish) "Later" else "Позже")
                                     }
 
                                     Button(
@@ -1039,7 +1050,7 @@ fun MapScreen(
 
                                     ){
 
-                                        Text("Слушать")
+                                        Text(if (com.example.diplom.utils.LanguageState.isEnglish) "Listen" else "Слушать")
                                     }
                                 }
                             }
@@ -1444,10 +1455,11 @@ fun MapScreen(
 
                                 Text(
 
-                                    text = if (routeBuilt)
-                                        "Маршрут построен"
-                                    else
-                                        "Маршрут: ${routePlaces.size} объект(ов)"
+                                    text = if (com.example.diplom.utils.LanguageState.isEnglish) {
+                                        if (routeBuilt) "Route built" else "Route: ${routePlaces.size} object(s)"
+                                    } else {
+                                        if (routeBuilt) "Маршрут построен" else "Маршрут: ${routePlaces.size} объект(ов)"
+                                    }
 
                                 )
                                 Spacer(
@@ -1492,7 +1504,7 @@ fun MapScreen(
 
                                     ) {
 
-                                        Text("Построить")
+                                        Text(if (com.example.diplom.utils.LanguageState.isEnglish) "Build" else "Построить")
                                     }
                                 }
                                 if (routeBuilt && !tourStarted) {
@@ -1512,7 +1524,7 @@ fun MapScreen(
 
                                     ) {
 
-                                        Text("Начать экскурсию")
+                                        Text(if (com.example.diplom.utils.LanguageState.isEnglish) "Start Tour" else "Начать экскурсию")
                                     }
                                 }
 
@@ -1527,8 +1539,7 @@ fun MapScreen(
 
                                     Text(
 
-                                        text =
-                                            "Следующая точка:",
+                                        text = if (com.example.diplom.utils.LanguageState.isEnglish) "Next point:" else "Следующая точка:",
 
                                         fontSize = 13.sp,
 
@@ -1589,15 +1600,14 @@ fun MapScreen(
 
                                         ) {
 
-                                            Text("Следующая")
+                                            Text(if (com.example.diplom.utils.LanguageState.isEnglish) "Next" else "Следующая")
                                         }
 
                                     } else {
 
                                         Text(
 
-                                            text =
-                                                "Экскурсия завершена 🎉",
+                                            text = if (com.example.diplom.utils.LanguageState.isEnglish) "Tour completed 🎉" else "Экскурсия завершена 🎉",
 
                                             color =
                                                 Color(0xFF4CAF50)
@@ -1643,7 +1653,7 @@ fun MapScreen(
 
                                 ) {
 
-                                    Text("Завершить маршрут")
+                                    Text(if (com.example.diplom.utils.LanguageState.isEnglish) "End Route" else "Завершить маршрут")
 
                                 }
 
@@ -1673,7 +1683,7 @@ fun MapScreen(
                     ) {
 
                         Text(
-                            "🗺 Маршруты"
+                            if (com.example.diplom.utils.LanguageState.isEnglish) "🗺 Routes" else "🗺 Маршруты"
                         )
                     }
 
@@ -1735,7 +1745,7 @@ fun MapScreen(
                                 place.regionName?.let {
                                     Spacer(Modifier.height(6.dp))
                                     Text(
-                                        text = if (place.hasAudio) "$it • Аудиогид" else it,
+                                        text = if (place.hasAudio) "$it • ${if (com.example.diplom.utils.LanguageState.isEnglish) "Audio guide" else "Аудиогид"}" else it,
                                         fontSize = 13.sp,
                                         color = Color(0xFF666666)
                                     )
@@ -1770,7 +1780,7 @@ fun MapScreen(
                                             contentColor = Color.White
                                         )
                                     ) {
-                                        Text("Добавить в маршрут")
+                                        Text(if (com.example.diplom.utils.LanguageState.isEnglish) "Add to route" else "Добавить в маршрут")
                                     }
 
                                     Row(
@@ -1786,7 +1796,7 @@ fun MapScreen(
                                             modifier = Modifier.weight(1f),
                                             shape = RoundedCornerShape(12.dp)
                                         ) {
-                                            Text("Закрыть")
+                                            Text(if (com.example.diplom.utils.LanguageState.isEnglish) "Close" else "Закрыть")
                                         }
 
                                         Button(
@@ -1803,7 +1813,7 @@ fun MapScreen(
                                                         Color(0xFF1F1F1F)
                                                 )
                                         ) {
-                                            Text("Перейти")
+                                            Text(if (com.example.diplom.utils.LanguageState.isEnglish) "Go to" else "Перейти")
                                         }
                                     }
                                 }
@@ -1823,7 +1833,7 @@ fun MapScreen(
                             title = {
 
                                 Text(
-                                    "Готовые маршруты"
+                                    if (com.example.diplom.utils.LanguageState.isEnglish) "Ready Routes" else "Готовые маршруты"
                                 )
                             },
 
@@ -2028,8 +2038,10 @@ fun MapScreen(
 
                                                 Text(
 
-                                                    "${route.points_count} точек • " +
-                                                            "${route.duration_minutes} мин",
+                                                    if (com.example.diplom.utils.LanguageState.isEnglish)
+                                                        "${route.points_count} points • ${route.duration_minutes} min"
+                                                    else
+                                                        "${route.points_count} точек • ${route.duration_minutes} мин",
 
                                                     color=Color.Gray
                                                 )
@@ -2048,7 +2060,7 @@ fun MapScreen(
                                     }
                                 ){
 
-                                    Text("Закрыть")
+                                    Text(if (com.example.diplom.utils.LanguageState.isEnglish) "Close" else "Закрыть")
                                 }
                             }
                         )
@@ -2075,7 +2087,7 @@ fun MapScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "Нет точек для отображения",
+                                text = if (com.example.diplom.utils.LanguageState.isEnglish) "No points to display" else "Нет точек для отображения",
                                 color = Color(0xFF666666)
                             )
                         }

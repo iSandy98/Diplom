@@ -106,6 +106,11 @@ fun HomeScreen(
     var isStoriesLoading by remember { mutableStateOf(true) }
     var isPlacesLoading by remember { mutableStateOf(true) }
 
+    var displayRegionTitle by remember { mutableStateOf(currentRegion) }
+    var displayDistricts by remember { mutableStateOf<List<DistrictUi>>(emptyList()) }
+    var displayStories by remember { mutableStateOf<List<StoryUi>>(emptyList()) }
+    var displayPlaces by remember { mutableStateOf<List<PlaceUi>>(emptyList()) }
+
     LaunchedEffect(currentRegion) {
         val regionsResult =
             regionsRepository.getRegions()
@@ -375,6 +380,20 @@ fun HomeScreen(
         isPlacesLoading = false
     }
 
+    LaunchedEffect(com.example.diplom.utils.LanguageState.isEnglish, districts, stories, places, currentRegion) {
+        if (com.example.diplom.utils.LanguageState.isEnglish) {
+            displayRegionTitle = com.example.diplom.utils.TranslationHelper.translate(currentRegion)
+            displayDistricts = districts.map { it.copy(title = com.example.diplom.utils.TranslationHelper.translate(it.title)) }
+            displayStories = stories.map { it.copy(title = com.example.diplom.utils.TranslationHelper.translate(it.title), subtitle = com.example.diplom.utils.TranslationHelper.translate(it.subtitle)) }
+            displayPlaces = places.map { it.copy(title = com.example.diplom.utils.TranslationHelper.translate(it.title), locationLabel = com.example.diplom.utils.TranslationHelper.translate(it.locationLabel)) }
+        } else {
+            displayRegionTitle = currentRegion
+            displayDistricts = districts
+            displayStories = stories
+            displayPlaces = places
+        }
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -386,7 +405,7 @@ fun HomeScreen(
             HomeTopBar(
 
                 title =
-                    currentRegion,
+                    displayRegionTitle,
 
                 onOpenProfile =
                     onOpenProfile
@@ -395,7 +414,7 @@ fun HomeScreen(
 
         item {
             SectionHeader(
-                title = "Районы Якутии",
+                title = if (com.example.diplom.utils.LanguageState.isEnglish) "Districts of Yakutia" else "Районы Якутии",
                 onClick = onOpenDistrictsList
             )
         }
@@ -414,7 +433,7 @@ fun HomeScreen(
                 LazyRow(
                     horizontalArrangement = Arrangement.spacedBy(15.dp)
                 ) {
-                    items(districts) { district ->
+                    items(displayDistricts) { district ->
                         DistrictItem(
                             item = district,
                             onClick = { onOpenDistrict(district.id) }
@@ -426,21 +445,21 @@ fun HomeScreen(
 
         item {
             SectionHeader(
-                title = "Рядом со мной",
+                title = if (com.example.diplom.utils.LanguageState.isEnglish) "Near Me" else "Рядом со мной",
                 onClick = onOpenMap
             )
         }
 
         item {
             NearbyMapPreview(
-                places = places,
+                places = displayPlaces,
                 onClick = onOpenMap
             )
         }
 
         item {
             SectionHeader(
-                title = "История на фотографиях",
+                title = if (com.example.diplom.utils.LanguageState.isEnglish) "History in Photos" else "История на фотографиях",
                 onClick = onOpenStories
             )
         }
@@ -460,7 +479,7 @@ fun HomeScreen(
                     LazyRow(
                         horizontalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(stories) { story ->
+                        items(displayStories) { story ->
                             Box(
                                 modifier = Modifier.clickable { onOpenStories() }
                             ) {
@@ -476,7 +495,7 @@ fun HomeScreen(
 
         item {
             SectionHeader(
-                title = "Интересные места",
+                title = if (com.example.diplom.utils.LanguageState.isEnglish) "Places of Interest" else "Интересные места",
                 onClick = {},
                 showArrow = false
             )
@@ -494,7 +513,7 @@ fun HomeScreen(
                 }
             }
         } else {
-            items(places) { place ->
+            items(displayPlaces) { place ->
                 PlaceItem(
                     item = place,
                     onClick = { onOpenPlace(place.id) },
@@ -520,7 +539,7 @@ fun HomeTopBar(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Start,
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             IconButton(onClick = onOpenProfile) {
@@ -529,6 +548,18 @@ fun HomeTopBar(
                     contentDescription = "Профиль",
                     modifier = Modifier.size(24.dp),
                     tint = Color(0xFF1F1F1F)
+                )
+            }
+            androidx.compose.material3.TextButton(
+                onClick = {
+                    com.example.diplom.utils.LanguageState.isEnglish =
+                        !com.example.diplom.utils.LanguageState.isEnglish
+                }
+            ) {
+                androidx.compose.material3.Text(
+                    text = if (com.example.diplom.utils.LanguageState.isEnglish) "RU" else "EN",
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = Color(0xFF49454F)
                 )
             }
         }

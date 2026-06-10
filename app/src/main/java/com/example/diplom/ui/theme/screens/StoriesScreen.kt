@@ -66,6 +66,7 @@ fun StoriesScreen(
 
     var query by remember { mutableStateOf("") }
     var stories by remember { mutableStateOf<List<StoryGridItemUi>>(emptyList()) }
+    var displayStories by remember { mutableStateOf<List<StoryGridItemUi>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
 
     LaunchedEffect(Unit) {
@@ -131,11 +132,21 @@ fun StoriesScreen(
         isLoading = false
     }
 
-    val filteredStories = remember(query, stories) {
-        if (query.isBlank()) {
-            stories
+    LaunchedEffect(com.example.diplom.utils.LanguageState.isEnglish, stories) {
+        if (com.example.diplom.utils.LanguageState.isEnglish) {
+            displayStories = stories.map {
+                it.copy(title = com.example.diplom.utils.TranslationHelper.translate(it.title))
+            }
         } else {
-            stories.filter {
+            displayStories = stories
+        }
+    }
+
+    val filteredStories = remember(query, displayStories) {
+        if (query.isBlank()) {
+            displayStories
+        } else {
+            displayStories.filter {
                 it.title.contains(query, ignoreCase = true) ||
                         it.subtitle.contains(query, ignoreCase = true)
             }
@@ -161,12 +172,25 @@ fun StoriesScreen(
                     tint = Color(0xFF1F1F1F)
                 )
             }
+            Spacer(Modifier.weight(1f))
+            androidx.compose.material3.TextButton(
+                onClick = {
+                    com.example.diplom.utils.LanguageState.isEnglish =
+                        !com.example.diplom.utils.LanguageState.isEnglish
+                }
+            ) {
+                Text(
+                    text = if (com.example.diplom.utils.LanguageState.isEnglish) "RU" else "EN",
+                    fontWeight = androidx.compose.ui.text.font.FontWeight.Bold,
+                    color = Color(0xFF49454F)
+                )
+            }
         }
 
         Spacer(Modifier.height(24.dp))
 
         Text(
-            text = "История на фотографиях",
+            text = if (com.example.diplom.utils.LanguageState.isEnglish) "History in Photos" else "История на фотографиях",
             style = TextStyle(
                 fontSize = 28.sp,
                 lineHeight = 36.sp
@@ -182,7 +206,7 @@ fun StoriesScreen(
             onValueChange = { query = it },
             placeholder = {
                 Text(
-                    text = "Поиск",
+                    text = if (com.example.diplom.utils.LanguageState.isEnglish) "Search" else "Поиск",
                     color = Color(0xFF666666),
                     fontSize = 16.sp
                 )
