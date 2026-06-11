@@ -42,4 +42,9 @@ interface OfflinePlaceDao {
     )
     suspend fun getAllPlaces():
             List<OfflinePlaceEntity>
+
+    @Query(
+        "SELECT * FROM offline_places WHERE id=:id LIMIT 1"
+    )
+    suspend fun getPlaceById(id: Int): OfflinePlaceEntity?
 }

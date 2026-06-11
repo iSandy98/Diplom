@@ -1,5 +1,6 @@
 package com.example.diplom.ui.theme.screens
 
+import kotlinx.coroutines.async
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -112,8 +113,13 @@ fun HomeScreen(
     var displayPlaces by remember { mutableStateOf<List<PlaceUi>>(emptyList()) }
 
     LaunchedEffect(currentRegion) {
-        val regionsResult =
-            regionsRepository.getRegions()
+        val regionsDeferred = async { regionsRepository.getRegions() }
+        val storiesDeferred = async { storiesRepository.getStories() }
+        val pointsDeferred = async { pointsRepository.getPoints() }
+
+        val regionsResult = regionsDeferred.await()
+        val storiesResult = storiesDeferred.await()
+        val pointsResult = pointsDeferred.await()
 
         regionsResult
             .onSuccess { data ->
@@ -177,9 +183,6 @@ fun HomeScreen(
                         }
             }
         isDistrictsLoading = false
-
-        val storiesResult =
-            storiesRepository.getStories()
 
         storiesResult
             .onSuccess { data ->
@@ -250,9 +253,6 @@ fun HomeScreen(
             }
 
         isStoriesLoading = false
-
-        val pointsResult =
-            pointsRepository.getPoints()
 
         pointsResult
             .onSuccess { data ->

@@ -536,6 +536,9 @@ class OfflineRepository(
 
         dao.getAllPlaces()
 
+    suspend fun getPlaceById(id: Int) =
+
+        dao.getPlaceById(id)
 
     suspend fun getDownloadedRegions()=
 

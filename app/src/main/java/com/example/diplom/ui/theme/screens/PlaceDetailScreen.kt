@@ -179,15 +179,9 @@ fun PlaceDetailScreen(
             )
         }.onFailure {
 
-            val offlinePlaces =
-                offlineRepository
-                    .getAllPlaces()
-
             val offlinePlace =
-                offlinePlaces.firstOrNull {
-
-                    it.id == id
-                }
+                offlineRepository
+                    .getPlaceById(id)
 
             if (offlinePlace != null) {
 
